@@ -114,6 +114,8 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-highlight:hover, .ns-highlight.ns-active { background: #ff869066; }
     .ns-badge { display: inline-flex; align-items: center; justify-content: center; background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-size: 10px; font-weight: 600; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px; vertical-align: super; margin-left: 3px; cursor: pointer; line-height: 100%; transition: transform 0.15s; }
     .ns-badge:hover { transform: scale(1.15); }
+    .ns-annotatable.ns-highlights-hidden .ns-highlight { background: transparent; border-bottom: none; color: inherit; padding: 0; cursor: text; }
+    .ns-annotatable.ns-highlights-hidden .ns-badge { display: none; }
     #ns-toolbar { position: fixed; display: none; gap: 4px; background: #fffdfb; border: 1px solid #484037; border-radius: 40px; padding: 4px; z-index: 9999; transform: translateX(-50%); box-shadow: 0 4px 12px #48403726; }
     #ns-toolbar.ns-visible { display: flex; }
     .ns-toolbar-btn { background: #ff8690; border: 1px solid #5f2126; color: #5f2126; font-family: inherit; font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 40px; cursor: pointer; line-height: 100%; }
@@ -142,7 +144,18 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-toggle-badge { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-size: 10px; font-weight: 600; padding: 2px 6px; min-width: 18px; text-align: center; border-radius: 10px; writing-mode: horizontal-tb; line-height: 100%; }
     .ns-toggle-badge[data-count="0"] { display: none; }
     .ns-panel-close { background: transparent; border: 1px solid #484037; color: #484037; width: 28px; height: 28px; border-radius: 14px; font-size: 16px; cursor: pointer; line-height: 1; float: right; }
-    .ns-panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 20px; }
+    .ns-panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
+
+    .ns-panel-stats { font-size: 12px; color: #675b4e; margin-bottom: 16px; }
+    .ns-panel-stats:empty { display: none; }
+    .ns-highlight-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #48403726; cursor: pointer; user-select: none; }
+    .ns-highlight-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .ns-toggle-slider { position: relative; width: 32px; height: 18px; background: #48403733; border-radius: 9px; flex-shrink: 0; transition: background 0.2s; }
+    .ns-toggle-slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fffdfb; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 2px #48403740; }
+    .ns-highlight-toggle input:checked + .ns-toggle-slider { background: #ff8690; }
+    .ns-highlight-toggle input:checked + .ns-toggle-slider::after { transform: translateX(14px); }
+    .ns-highlight-toggle input:focus-visible + .ns-toggle-slider { outline: 2px solid #9ed5fe; outline-offset: 2px; }
+    .ns-toggle-label { font-size: 13px; color: #484037; font-weight: 500; }
 
     .ns-card { border: 1px solid #484037; background: #fffdfb; border-radius: 16px; margin-bottom: 12px; cursor: pointer; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; animation: ns-slidein 0.25s ease; }
     .ns-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px #48403726; }
@@ -271,6 +284,43 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   const panelBadgeCount = document.createElement('span');
   panelTitle.appendChild(panelBadgeCount);
   panel.appendChild(panelTitle);
+
+  // Stats row
+  const panelStats = document.createElement('div');
+  panelStats.className = 'ns-panel-stats';
+  panel.appendChild(panelStats);
+
+  // Highlight toggle
+  const highlightToggleWrap = document.createElement('label');
+  highlightToggleWrap.className = 'ns-highlight-toggle';
+  const highlightToggleInput = document.createElement('input');
+  highlightToggleInput.type = 'checkbox';
+  highlightToggleInput.checked = true;
+  const highlightToggleSlider = document.createElement('span');
+  highlightToggleSlider.className = 'ns-toggle-slider';
+  const highlightToggleLabel = document.createElement('span');
+  highlightToggleLabel.className = 'ns-toggle-label';
+  highlightToggleLabel.textContent = 'Show highlights in article';
+  highlightToggleWrap.appendChild(highlightToggleInput);
+  highlightToggleWrap.appendChild(highlightToggleSlider);
+  highlightToggleWrap.appendChild(highlightToggleLabel);
+  panel.appendChild(highlightToggleWrap);
+
+  // Restore preference from localStorage
+  try {
+    const stored = localStorage.getItem('ns_show_highlights');
+    if (stored === 'false') {
+      highlightToggleInput.checked = false;
+      wrapper.classList.add('ns-highlights-hidden');
+    }
+  } catch (e) {}
+
+  highlightToggleInput.addEventListener('change', () => {
+    const on = highlightToggleInput.checked;
+    wrapper.classList.toggle('ns-highlights-hidden', !on);
+    try { localStorage.setItem('ns_show_highlights', on ? 'true' : 'false'); } catch (e) {}
+  });
+
   const panelList = document.createElement('div');
   panel.appendChild(panelList);
   document.body.appendChild(panel);
@@ -295,8 +345,18 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   panelClose.addEventListener('click', closePanel);
 
   function updateToggleBadge() {
-    toggleBadge.textContent = allAnnotations.length;
-    toggleBadge.dataset.count = allAnnotations.length;
+    const n = allAnnotations.length;
+    toggleBadge.textContent = n;
+    toggleBadge.dataset.count = n;
+    const replyCount = allAnnotations.reduce((sum, a) => sum + ((a.replies && a.replies.length) || 0), 0);
+    if (n === 0) {
+      panelStats.textContent = '';
+    } else {
+      const annLabel = n === 1 ? '1 annotation' : n + ' annotations';
+      const replyLabel = replyCount === 0 ? '' :
+        replyCount === 1 ? ' · 1 reply' : ' · ' + replyCount + ' replies';
+      panelStats.textContent = annLabel + replyLabel;
+    }
   }
 
   // ─── Selection handling ────────────────────────────
@@ -552,6 +612,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     ann.replies.push(reply);
     sBtn.disabled = false;
     sBtn.textContent = 'Reply →';
+    updateToggleBadge();
 
     const card = form.closest('.ns-card');
     let repliesContainer = card.querySelector('[data-replies="' + annId + '"]');
@@ -810,7 +871,6 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
       '</div>';
     }).join('');
 
-    // Wire up buttons (no inline onclick — Webflow strips those sometimes)
     panelList.querySelectorAll('[data-like-btn]').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); toggleLike(btn.dataset.likeBtn); });
     });
