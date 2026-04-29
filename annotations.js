@@ -17,6 +17,64 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   }
   const BROWSER_ID = getBrowserId();
 
+  // ─── Memberstack auth ──────────────────────────────
+  let currentMember = null;
+
+  async function loadMember() {
+    try {
+      if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
+        const res = await window.$memberstackDom.getCurrentMember();
+        currentMember = (res && res.data) || null;
+      } else if (window.MemberStack && typeof window.MemberStack.onReady === 'object') {
+        const m = await window.MemberStack.onReady;
+        currentMember = m && m.loggedIn ? m : null;
+      }
+    } catch (e) {
+      console.warn('[NS] Memberstack lookup failed:', e);
+      currentMember = null;
+    }
+  }
+
+  function isLoggedIn() { return !!currentMember; }
+
+  function memberId() {
+    if (!currentMember) return null;
+    return currentMember.id || currentMember.memberId || null;
+  }
+
+  function memberName() {
+    if (!currentMember) return null;
+    const cf = currentMember.customFields || {};
+    const fullName = [cf['first-name'], cf['last-name']].filter(Boolean).join(' ');
+    return cf.name ||
+      fullName ||
+      cf['first-name'] ||
+      currentMember.auth?.email ||
+      currentMember.email ||
+      'Member';
+  }
+
+  function openMemberstackLogin() {
+    try {
+      if (window.$memberstackDom && typeof window.$memberstackDom.openModal === 'function') {
+        window.$memberstackDom.openModal('LOGIN');
+        return;
+      }
+    } catch (e) {}
+    alert('Please sign in to participate.');
+  }
+
+  await loadMember();
+  if (window.$memberstackDom && typeof window.$memberstackDom.onAuthChange === 'function') {
+    try {
+      window.$memberstackDom.onAuthChange(async () => {
+        await loadMember();
+        applyAuthState();
+        renderAnnotations();
+      });
+    } catch (e) {}
+  }
+
   // ─── Supabase helper with proper error handling ────
   async function supa(method, path, body) {
     const headers = {
@@ -203,6 +261,12 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-reply-btn-cancel, .ns-reply-btn-submit { font-family: inherit; font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 20px; cursor: pointer; border: 1px solid #484037; line-height: 100%; }
     .ns-reply-btn-cancel { background: transparent; color: #484037; }
     .ns-reply-btn-submit { background: #ff8690; color: #5f2126; border-color: #5f2126; }
+
+    .ns-signin-prompt { padding: 14px; margin: 0 0 12px; background: #fffdfb; border: 1px dashed #484037; border-radius: 12px; font-size: 13px; color: #484037; line-height: 145%; }
+    .ns-signin-prompt button { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; cursor: pointer; margin-top: 8px; line-height: 100%; }
+    .ns-locked-msg { font-size: 12px; color: #675b4e; padding: 10px 14px; border-top: 1px solid #48403726; }
+    .ns-locked-msg a { color: #5f2126; cursor: pointer; text-decoration: underline; font-weight: 600; }
+    .ns-action-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
   `;
   document.head.appendChild(style);
 
@@ -239,14 +303,6 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   const modalQuote = document.createElement('div');
   modalQuote.id = 'ns-modal-quote';
   modalBox.appendChild(modalQuote);
-  const authorLabel = document.createElement('label');
-  authorLabel.textContent = 'Your name (optional)';
-  modalBox.appendChild(authorLabel);
-  const authorInput = document.createElement('input');
-  authorInput.type = 'text';
-  authorInput.placeholder = 'Anonymous';
-  authorInput.maxLength = 60;
-  modalBox.appendChild(authorInput);
   const textLabel = document.createElement('label');
   textLabel.textContent = 'Your annotation';
   modalBox.appendChild(textLabel);
@@ -404,14 +460,25 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   // ─── Compose ───────────────────────────────────────
   function openCompose() {
     if (!pending) return;
+    if (!isLoggedIn()) {
+      hideSelectionUI();
+      openMemberstackLogin();
+      return;
+    }
     hideSelectionUI();
     modalQuote.textContent = '"' + pending.text + '"';
     textArea.value = '';
-    authorInput.value = '';
     modalOverlay.classList.add('ns-visible');
     if (!isTouch) textArea.focus();
     window.getSelection()?.removeAllRanges();
   }
+  function applyAuthState() {
+    const loggedIn = isLoggedIn();
+    annotateBtn.textContent = loggedIn ? '✎ Annotate' : '✎ Sign in to annotate';
+    fab.textContent = loggedIn ? '✎ Annotate' : '✎ Sign in to annotate';
+  }
+  applyAuthState();
+
   annotateBtn.addEventListener('click', openCompose);
   fab.addEventListener('click', openCompose);
   viewBtn.addEventListener('click', () => { hideSelectionUI(); openPanel(); });
@@ -422,8 +489,9 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 
   submitBtn.addEventListener('click', async () => {
     const text = textArea.value.trim();
-    const author = authorInput.value.trim() || 'Anonymous';
     if (!text || !pending) return;
+    if (!isLoggedIn()) { openMemberstackLogin(); return; }
+    const author = memberName();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
     try {
@@ -433,6 +501,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
         selected_text: pending.text,
         annotation_text: text,
         author_name: author,
+        member_id: memberId(),
         likes: 0
       });
       if (Array.isArray(rows) && rows[0]) {
@@ -467,6 +536,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   }
 
   async function toggleLike(annId) {
+    if (!isLoggedIn()) { openMemberstackLogin(); return; }
     const ann = allAnnotations.find(a => a.id === annId);
     if (!ann) return;
     const wasLiked = likedAnnotations.has(annId);
@@ -478,14 +548,19 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
       ann.likes += 1;
     }
     updateLikeButton(annId);
+    const mid = memberId();
     try {
       if (wasLiked) {
         await supa('DELETE',
           'annotation_likes?annotation_id=eq.' + encodeURIComponent(annId) +
-          '&browser_id=eq.' + encodeURIComponent(BROWSER_ID)
+          '&member_id=eq.' + encodeURIComponent(mid)
         );
       } else {
-        await supa('POST', 'annotation_likes', { annotation_id: annId, browser_id: BROWSER_ID });
+        await supa('POST', 'annotation_likes', {
+          annotation_id: annId,
+          member_id: mid,
+          browser_id: BROWSER_ID
+        });
       }
       await supa('PATCH',
         'annotations?id=eq.' + encodeURIComponent(annId),
@@ -498,6 +573,12 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 
   // ─── Delete ────────────────────────────────────────
   function deleteAnnotation(annId, btnEl) {
+    const ann = allAnnotations.find(a => a.id === annId);
+    const mid = memberId();
+    if (!ann || !mid || ann.member_id !== mid) {
+      if (!isLoggedIn()) openMemberstackLogin();
+      return;
+    }
     if (pendingDeletes.has(annId)) {
       clearTimeout(pendingDeletes.get(annId));
       pendingDeletes.delete(annId);
@@ -535,6 +616,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 
   // ─── Reply form ────────────────────────────────────
   function toggleReplyForm(annId) {
+    if (!isLoggedIn()) { openMemberstackLogin(); return; }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
     if (!form) return;
     const wasOpen = form.classList.contains('ns-open');
@@ -549,8 +631,8 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
     if (!form) return;
     form.classList.remove('ns-open');
-    form.querySelector('input').value = '';
-    form.querySelector('textarea').value = '';
+    const ti = form.querySelector('textarea');
+    if (ti) ti.value = '';
   }
 
   function toggleReplies(annId) {
@@ -570,12 +652,12 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   }
 
   async function submitReply(annId) {
+    if (!isLoggedIn()) { openMemberstackLogin(); return; }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
     if (!form) return;
-    const nameIn = form.querySelector('input');
     const textIn = form.querySelector('textarea');
     const text = textIn.value.trim();
-    const author = nameIn.value.trim() || 'Anonymous';
+    const author = memberName();
     if (!text) return;
     const ann = allAnnotations.find(a => a.id === annId);
     if (!ann) return;
@@ -585,7 +667,10 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     let reply;
     try {
       const rows = await supa('POST', 'annotation_replies', {
-        annotation_id: annId, reply_text: text, author_name: author
+        annotation_id: annId,
+        reply_text: text,
+        author_name: author,
+        member_id: memberId()
       });
       if (!Array.isArray(rows) || !rows[0]) throw new Error('no row');
       reply = rows[0];
@@ -787,16 +872,28 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
       : allAnnotations;
     panelBadgeCount.textContent = '(' + allAnnotations.length + ')';
 
+    const signinPromptHtml = !isLoggedIn() ?
+      '<div class="ns-signin-prompt">' +
+        'Sign in to add annotations, replies, and likes.' +
+        '<br><button type="button" data-ns-signin>Sign in</button>' +
+      '</div>' : '';
+
     if (!shown.length) {
-      panelList.innerHTML = '<p style="color:#675b4e;font-size:14px;text-align:center;padding:2rem 0">' +
-        (filterPid ? 'No annotations on this paragraph yet.' : 'No annotations yet. Highlight text to start.') +
+      panelList.innerHTML = signinPromptHtml +
+        '<p style="color:#675b4e;font-size:14px;text-align:center;padding:2rem 0">' +
+        (filterPid ? 'No annotations on this paragraph yet.' : (isLoggedIn() ? 'No annotations yet. Highlight text to start.' : 'No annotations yet.')) +
         '</p>';
+      panelList.querySelectorAll('[data-ns-signin]').forEach(b => {
+        b.addEventListener('click', (e) => { e.stopPropagation(); openMemberstackLogin(); });
+      });
       return;
     }
 
-    panelList.innerHTML = shown.map(a => {
+    const mid = memberId();
+    panelList.innerHTML = signinPromptHtml + shown.map(a => {
       const liked = likedAnnotations.has(a.id);
       const aid = String(a.id);
+      const isOwner = mid && a.member_id && a.member_id === mid;
       const repliesHtml = a.replies && a.replies.length ?
         '<button class="ns-replies-toggle" data-replies-toggle="' + escapeHtml(aid) + '">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>' +
@@ -835,19 +932,19 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
               '</svg>' +
               '<span>' + (a.replies && a.replies.length ? 'Reply · ' + a.replies.length : 'Reply') + '</span>' +
             '</button>' +
-            '<button class="ns-action-btn ns-delete-btn" data-delete-btn="' + escapeHtml(aid) + '" aria-label="Delete">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
-                '<polyline points="3 6 5 6 21 6"/>' +
-                '<path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/>' +
-                '<path d="M10 11v6M14 11v6"/>' +
-                '<path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>' +
-              '</svg>' +
-            '</button>' +
+            (isOwner ?
+              '<button class="ns-action-btn ns-delete-btn" data-delete-btn="' + escapeHtml(aid) + '" aria-label="Delete">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
+                  '<polyline points="3 6 5 6 21 6"/>' +
+                  '<path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/>' +
+                  '<path d="M10 11v6M14 11v6"/>' +
+                  '<path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>' +
+                '</svg>' +
+              '</button>' : '') +
           '</div>' +
         '</div>' +
         repliesHtml +
         '<div class="ns-reply-form" data-reply-form="' + escapeHtml(aid) + '">' +
-          '<input type="text" placeholder="Your name (optional)" maxlength="60">' +
           '<textarea placeholder="Write a reply..." maxlength="400"></textarea>' +
           '<div class="ns-reply-form-actions">' +
             '<button class="ns-reply-btn-cancel" data-reply-cancel="' + escapeHtml(aid) + '">Cancel</button>' +
@@ -874,6 +971,9 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     });
     panelList.querySelectorAll('[data-reply-submit]').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); submitReply(btn.dataset.replySubmit); });
+    });
+    panelList.querySelectorAll('[data-ns-signin]').forEach(b => {
+      b.addEventListener('click', (e) => { e.stopPropagation(); openMemberstackLogin(); });
     });
 
     requestAnimationFrame(addQuoteToggles);
