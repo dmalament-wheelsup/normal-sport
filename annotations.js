@@ -141,7 +141,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     #ns-panel.ns-open { right: 0; }
     #ns-panel-toggle { position: fixed; top: 50%; right: 0; background: #fffdfb; color: #484037; border: 1px solid #484037; border-right: none; padding: 16px 8px; cursor: pointer; z-index: 9996; font-family: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; writing-mode: vertical-rl; transform: translateY(-50%); transition: right 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; align-items: center; gap: 8px; border-radius: 16px 0 0 16px; }
     #ns-panel-toggle.ns-panel-open { right: 380px; }
-    .ns-toggle-badge { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-size: 10px; font-weight: 600; padding: 2px 6px; min-width: 18px; text-align: center; border-radius: 10px; writing-mode: horizontal-tb; line-height: 100%; }
+    .ns-toggle-badge { display: inline-flex; align-items: center; justify-content: center; background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-size: 10px; font-weight: 600; padding: 2px 6px; min-width: 18px; box-sizing: border-box; letter-spacing: 0; text-indent: 0; border-radius: 10px; writing-mode: horizontal-tb; line-height: 100%; }
     .ns-toggle-badge[data-count="0"] { display: none; }
     .ns-panel-close { background: transparent; border: 1px solid #484037; color: #484037; width: 28px; height: 28px; border-radius: 14px; font-size: 16px; cursor: pointer; line-height: 1; float: right; }
     .ns-panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
@@ -165,7 +165,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-card-quote { background: #ff869033; border-left: 2px solid #ff8690; padding: 10px 14px; font-size: 13px; font-style: italic; color: #5f2126; line-height: 140%; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; position: relative; }
     .ns-card-quote:not(.ns-expanded)::after { content: ""; position: absolute; left: 2px; right: 0; bottom: 0; height: 0.8em; background: linear-gradient(to bottom, rgba(255,134,144,0) 0%, rgba(255,218,221,0.95) 70%, rgba(255,218,221,1) 100%); pointer-events: none; }
     .ns-card-quote.ns-expanded { -webkit-line-clamp: unset; display: block; }
-    .ns-quote-toggle { display: block; background: #ff869033; border: none; border-left: 2px solid #ff8690; padding: 0 14px 10px; margin: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: #5f2126; cursor: pointer; line-height: 1.3; text-align: left; width: 100%; }
+    .ns-quote-toggle { display: block; background: #ff869033; border: none; border-left: 2px solid #ff8690; padding: 6px 14px 10px; margin: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: #5f2126; cursor: pointer; line-height: 1.3; text-align: left; width: 100%; }
     .ns-quote-toggle:hover { color: #484037; }
     .ns-card-body { padding: 14px; font-size: 14px; color: #484037; line-height: 150%; }
     .ns-card-footer { padding: 10px 14px; border-top: 1px solid #48403726; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -186,7 +186,7 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-replies-toggle:hover { background: #48403712; color: #484037; }
     .ns-replies-toggle svg { width: 12px; height: 12px; transition: transform 0.2s; }
     .ns-replies-toggle.ns-open svg { transform: rotate(90deg); }
-    .ns-replies { border-top: 1px solid #48403726; background: #fff7ee; display: none; }
+    .ns-replies { border-top: 1px solid #48403726; background: #f5ead9; display: none; }
     .ns-replies.ns-open { display: block; }
     .ns-reply { padding: 10px 14px 10px 28px; border-bottom: 1px solid #48403714; position: relative; }
     .ns-reply:last-child { border-bottom: none; }
