@@ -54,10 +54,33 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
       'Member';
   }
 
+  async function refreshAuthAndUI() {
+    const before = memberId();
+    await loadMember();
+    const after = memberId();
+    applyAuthState();
+    if (before !== after) renderAnnotations();
+  }
+
+  function watchForLogin(durationMs = 60000, intervalMs = 1000) {
+    const start = Date.now();
+    const tick = async () => {
+      const wasLoggedIn = isLoggedIn();
+      await refreshAuthAndUI();
+      if (!wasLoggedIn && isLoggedIn()) return;
+      if (Date.now() - start < durationMs) setTimeout(tick, intervalMs);
+    };
+    setTimeout(tick, intervalMs);
+  }
+
   function openMemberstackLogin() {
     try {
       if (window.$memberstackDom && typeof window.$memberstackDom.openModal === 'function') {
-        window.$memberstackDom.openModal('LOGIN');
+        const result = window.$memberstackDom.openModal('LOGIN');
+        if (result && typeof result.then === 'function') {
+          result.then(() => refreshAuthAndUI()).catch(() => {});
+        }
+        watchForLogin();
         return;
       }
     } catch (e) {}
@@ -66,14 +89,12 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 
   await loadMember();
   if (window.$memberstackDom && typeof window.$memberstackDom.onAuthChange === 'function') {
-    try {
-      window.$memberstackDom.onAuthChange(async () => {
-        await loadMember();
-        applyAuthState();
-        renderAnnotations();
-      });
-    } catch (e) {}
+    try { window.$memberstackDom.onAuthChange(() => refreshAuthAndUI()); } catch (e) {}
   }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshAuthAndUI();
+  });
+  window.addEventListener('focus', () => refreshAuthAndUI());
 
   // ─── Supabase helper with proper error handling ────
   async function supa(method, path, body) {
