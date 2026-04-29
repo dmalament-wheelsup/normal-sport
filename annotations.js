@@ -144,10 +144,8 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     .ns-toggle-badge { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-size: 10px; font-weight: 600; padding: 2px 6px; min-width: 18px; text-align: center; border-radius: 10px; writing-mode: horizontal-tb; line-height: 100%; }
     .ns-toggle-badge[data-count="0"] { display: none; }
     .ns-panel-close { background: transparent; border: 1px solid #484037; color: #484037; width: 28px; height: 28px; border-radius: 14px; font-size: 16px; cursor: pointer; line-height: 1; float: right; }
-    .ns-panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
+    .ns-panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 16px; }
 
-    .ns-panel-stats { font-size: 12px; color: #675b4e; margin-bottom: 16px; }
-    .ns-panel-stats:empty { display: none; }
     .ns-highlight-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #48403726; cursor: pointer; user-select: none; }
     .ns-highlight-toggle input { position: absolute; opacity: 0; pointer-events: none; }
     .ns-toggle-slider { position: relative; width: 32px; height: 18px; background: #48403733; border-radius: 9px; flex-shrink: 0; transition: background 0.2s; }
@@ -285,17 +283,12 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   panelTitle.appendChild(panelBadgeCount);
   panel.appendChild(panelTitle);
 
-  // Stats row
-  const panelStats = document.createElement('div');
-  panelStats.className = 'ns-panel-stats';
-  panel.appendChild(panelStats);
-
   // Highlight toggle
   const highlightToggleWrap = document.createElement('label');
   highlightToggleWrap.className = 'ns-highlight-toggle';
   const highlightToggleInput = document.createElement('input');
   highlightToggleInput.type = 'checkbox';
-  highlightToggleInput.checked = true;
+  highlightToggleInput.checked = false;
   const highlightToggleSlider = document.createElement('span');
   highlightToggleSlider.className = 'ns-toggle-slider';
   const highlightToggleLabel = document.createElement('span');
@@ -306,14 +299,17 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
   highlightToggleWrap.appendChild(highlightToggleLabel);
   panel.appendChild(highlightToggleWrap);
 
-  // Restore preference from localStorage
+  // Restore preference from localStorage (default off)
   try {
     const stored = localStorage.getItem('ns_show_highlights');
-    if (stored === 'false') {
-      highlightToggleInput.checked = false;
+    if (stored === 'true') {
+      highlightToggleInput.checked = true;
+    } else {
       wrapper.classList.add('ns-highlights-hidden');
     }
-  } catch (e) {}
+  } catch (e) {
+    wrapper.classList.add('ns-highlights-hidden');
+  }
 
   highlightToggleInput.addEventListener('change', () => {
     const on = highlightToggleInput.checked;
@@ -348,15 +344,6 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     const n = allAnnotations.length;
     toggleBadge.textContent = n;
     toggleBadge.dataset.count = n;
-    const replyCount = allAnnotations.reduce((sum, a) => sum + ((a.replies && a.replies.length) || 0), 0);
-    if (n === 0) {
-      panelStats.textContent = '';
-    } else {
-      const annLabel = n === 1 ? '1 annotation' : n + ' annotations';
-      const replyLabel = replyCount === 0 ? '' :
-        replyCount === 1 ? ' · 1 reply' : ' · ' + replyCount + ' replies';
-      panelStats.textContent = annLabel + replyLabel;
-    }
   }
 
   // ─── Selection handling ────────────────────────────
@@ -612,7 +599,6 @@ const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
     ann.replies.push(reply);
     sBtn.disabled = false;
     sBtn.textContent = 'Reply →';
-    updateToggleBadge();
 
     const card = form.closest('.ns-card');
     let repliesContainer = card.querySelector('[data-replies="' + annId + '"]');
