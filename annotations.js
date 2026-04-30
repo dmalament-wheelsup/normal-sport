@@ -395,7 +395,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     .ns-reply-btn-cancel { background: transparent; color: #484037; }
     .ns-reply-btn-submit { background: #ff8690; color: #5f2126; border-color: #5f2126; }
 
-    .ns-signin-prompt { padding: 14px; margin: 0 0 12px; background: #fffdfb; border: 1px dashed #484037; border-radius: 12px; font-size: 13px; color: #484037; line-height: 145%; }
+    .ns-signin-prompt { padding: 14px; margin: 0 0 12px; background: #fffdfb; border: 1px dashed #484037; border-radius: 12px; font-size: 13px; color: #484037; line-height: 145%; text-align: center; }
     .ns-signin-prompt button { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; cursor: pointer; margin-top: 8px; line-height: 100%; }
     .ns-locked-msg { font-size: 12px; color: #675b4e; padding: 10px 14px; border-top: 1px solid #48403726; }
     .ns-locked-msg a { color: #5f2126; cursor: pointer; text-decoration: underline; font-weight: 600; }
