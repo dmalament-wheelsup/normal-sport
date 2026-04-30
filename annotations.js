@@ -1,7 +1,7 @@
 // ─── CONFIG ───────────────────────────────────────────
 const NS_SUPABASE_URL = 'https://rayuxgfjmhmyblksmuta.supabase.co';
 const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
-const NS_LOGIN_URL = '/log-in';
+const NS_LOGIN_URL = '/login';
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
