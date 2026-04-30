@@ -518,12 +518,13 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   const panelToggle = document.createElement('button');
   panelToggle.id = 'ns-panel-toggle';
   const toggleLabel = document.createElement('span');
-  toggleLabel.textContent = 'Annotations';
+  toggleLabel.textContent = 'Loading...';
   panelToggle.appendChild(toggleLabel);
   const toggleBadge = document.createElement('span');
   toggleBadge.className = 'ns-toggle-badge';
   toggleBadge.dataset.count = '0';
   toggleBadge.textContent = '0';
+  toggleBadge.style.display = 'none';
   panelToggle.appendChild(toggleBadge);
   document.body.appendChild(panelToggle);
 
@@ -543,8 +544,10 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
   function updateToggleBadge() {
     const n = allAnnotations.length;
+    toggleLabel.textContent = 'Annotations';
     toggleBadge.textContent = n;
     toggleBadge.dataset.count = n;
+    toggleBadge.style.display = '';
   }
 
   // ─── Selection handling ────────────────────────────
@@ -1372,6 +1375,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       updateToggleBadge();
     } catch (err) {
       console.error('[NS] Load failed:', err);
+      updateToggleBadge();
     }
   }
 
