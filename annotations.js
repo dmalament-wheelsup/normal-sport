@@ -328,7 +328,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     .ns-btn-cancel { background: transparent; color: #484037; }
     .ns-btn-submit { background: #ff8690; color: #5f2126; border-color: #5f2126; }
     .ns-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-    #ns-panel { position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: #fff7ee; border-left: 1px solid #484037; z-index: 9997; overflow-y: auto; padding: 24px; transition: right 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; box-sizing: border-box; }
+    #ns-panel { position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: #fff7ee; border-left: 1px solid #484037; z-index: 9997; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; padding: 24px; transition: right 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; box-sizing: border-box; }
     #ns-panel.ns-open { right: 0; }
     #ns-panel-toggle { position: fixed; top: 50%; right: 0; background: #fffdfb; color: #484037; border: 1px solid #484037; border-right: none; padding: 16px 8px; cursor: pointer; z-index: 9996; font-family: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; writing-mode: vertical-rl; transform: translateY(-50%); transition: right 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; align-items: center; gap: 8px; border-radius: 16px 0 0 16px; }
     #ns-panel-toggle.ns-panel-open { right: 380px; }
