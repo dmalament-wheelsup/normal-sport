@@ -252,6 +252,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   let allAnnotations = [];
   const likedAnnotations = new Set();
   const pendingDeletes = new Map();
+  const locatableIds = new Set();
 
   // ─── Helpers ───────────────────────────────────────
   function escapeHtml(s) {
@@ -554,7 +555,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   panelClose.addEventListener('click', closePanel);
 
   function updateToggleBadge() {
-    const n = allAnnotations.length;
+    const n = allAnnotations.filter((a) => locatableIds.has(a.id)).length;
     toggleLabel.textContent = 'Annotations';
     toggleBadge.textContent = n;
     toggleBadge.dataset.count = n;
@@ -721,8 +722,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       });
       if (Array.isArray(rows) && rows[0]) {
         allAnnotations.push({ ...rows[0], replies: [] });
-        renderAnnotations();
         applyHighlights();
+        renderAnnotations();
         updateToggleBadge();
       }
     } catch (err) {
@@ -820,8 +821,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
         card.style.opacity = '0';
         card.style.transform = 'translateX(-12px)';
         setTimeout(() => {
-          renderAnnotations();
           applyHighlights();
+          renderAnnotations();
           updateToggleBadge();
         }, 180);
       }
@@ -1012,6 +1013,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     });
     wrapper.querySelectorAll('.ns-badge').forEach((el) => el.remove());
 
+    locatableIds.clear();
+
     const byPara = {};
     allAnnotations.forEach((a) => {
       (byPara[a.paragraph_id] = byPara[a.paragraph_id] || []).push(a);
@@ -1074,6 +1077,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       if (sIdx == null || eIdx == null) return;
       if (!posMap[sIdx] || !posMap[eIdx - 1]) return;
 
+      anns.forEach((a) => locatableIds.add(a.id));
+
       const range = document.createRange();
       range.setStart(posMap[sIdx].node, posMap[sIdx].offset);
       range.setEnd(posMap[eIdx - 1].node, posMap[eIdx - 1].offset + 1);
@@ -1130,10 +1135,13 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   }
 
   function renderAnnotations(filterPid = null) {
+    const visibleAnnotations = allAnnotations.filter((a) =>
+      locatableIds.has(a.id),
+    );
     const shown = filterPid
-      ? allAnnotations.filter((a) => a.paragraph_id === filterPid)
-      : allAnnotations;
-    panelBadgeCount.textContent = '(' + allAnnotations.length + ')';
+      ? visibleAnnotations.filter((a) => a.paragraph_id === filterPid)
+      : visibleAnnotations;
+    panelBadgeCount.textContent = '(' + visibleAnnotations.length + ')';
 
     const signinPromptHtml = !hasPaidAccess()
       ? '<div class="ns-signin-prompt">' +
@@ -1343,8 +1351,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       if (!Array.isArray(annotations) || !annotations.length) {
         allAnnotations = [];
         tagAllBlocks();
-        renderAnnotations();
         applyHighlights();
+        renderAnnotations();
         updateToggleBadge();
         return;
       }
@@ -1381,8 +1389,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       }));
 
       tagAllBlocks();
-      renderAnnotations();
       applyHighlights();
+      renderAnnotations();
       updateToggleBadge();
     } catch (err) {
       console.error('[NS] Load failed:', err);
