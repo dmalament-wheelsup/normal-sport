@@ -2,6 +2,7 @@
 const NS_SUPABASE_URL = 'https://rayuxgfjmhmyblksmuta.supabase.co';
 const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 const NS_LOGIN_URL = '/login';
+const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
@@ -47,6 +48,37 @@ const NS_LOGIN_URL = '/login';
 
   function isLoggedIn() {
     return !!currentMember;
+  }
+
+  function hasPaidAccess() {
+    if (!currentMember) return false;
+
+    // 1. Check Memberstack data: planConnections / permissions / contentGroups
+    const planConnections = currentMember.planConnections || [];
+    for (const pc of planConnections) {
+      if (pc.status && pc.status !== 'ACTIVE' && pc.status !== 'TRIALING')
+        continue;
+      const groups = pc.contentGroups || pc.contentGroupIds || [];
+      if (Array.isArray(groups)) {
+        for (const g of groups) {
+          const name = typeof g === 'string' ? g : g && (g.name || g.id);
+          if (name === NS_PAID_GATE) return true;
+        }
+      }
+    }
+    const perms = currentMember.permissions || [];
+    if (Array.isArray(perms) && perms.includes(NS_PAID_GATE)) return true;
+
+    // 2. Fallback: trust Memberstack's own DOM gating. If a non-hidden
+    //    element with data-ms-content="ns-members" exists, the member has access.
+    const gated = document.querySelectorAll(
+      '[data-ms-content="' + NS_PAID_GATE + '"]',
+    );
+    for (const el of gated) {
+      const style = window.getComputedStyle(el);
+      if (style.display !== 'none' && style.visibility !== 'hidden') return true;
+    }
+    return false;
   }
 
   function memberId() {
@@ -565,9 +597,10 @@ const NS_LOGIN_URL = '/login';
   // ─── Compose ───────────────────────────────────────
   function openCompose() {
     if (!pending) return;
-    if (!isLoggedIn()) {
+    if (!hasPaidAccess()) {
       hideSelectionUI();
-      openMemberstackLogin();
+      if (!isLoggedIn()) openMemberstackLogin();
+      else alert('Join the Normal Club to post annotations.');
       return;
     }
     hideSelectionUI();
@@ -578,9 +611,10 @@ const NS_LOGIN_URL = '/login';
     window.getSelection()?.removeAllRanges();
   }
   function applyAuthState() {
-    const loggedIn = isLoggedIn();
-    annotateBtn.textContent = loggedIn ? '✎ Annotate' : '✎ Sign in to annotate';
-    fab.textContent = loggedIn ? '✎ Annotate' : '✎ Sign in to annotate';
+    const paid = hasPaidAccess();
+    const label = paid ? '✎ Annotate' : '✎ Join the Normal Club to post';
+    annotateBtn.textContent = label;
+    fab.textContent = label;
   }
   applyAuthState();
 
@@ -604,8 +638,9 @@ const NS_LOGIN_URL = '/login';
   submitBtn.addEventListener('click', async () => {
     const text = textArea.value.trim();
     if (!text || !pending) return;
-    if (!isLoggedIn()) {
-      openMemberstackLogin();
+    if (!hasPaidAccess()) {
+      if (!isLoggedIn()) openMemberstackLogin();
+      else alert('Join the Normal Club to post annotations.');
       return;
     }
     const author = memberName();
@@ -653,8 +688,9 @@ const NS_LOGIN_URL = '/login';
   }
 
   async function toggleLike(annId) {
-    if (!isLoggedIn()) {
-      openMemberstackLogin();
+    if (!hasPaidAccess()) {
+      if (!isLoggedIn()) openMemberstackLogin();
+      else alert('Join the Normal Club to like annotations.');
       return;
     }
     const ann = allAnnotations.find((a) => a.id === annId);
@@ -744,8 +780,9 @@ const NS_LOGIN_URL = '/login';
 
   // ─── Reply form ────────────────────────────────────
   function toggleReplyForm(annId) {
-    if (!isLoggedIn()) {
-      openMemberstackLogin();
+    if (!hasPaidAccess()) {
+      if (!isLoggedIn()) openMemberstackLogin();
+      else alert('Join the Normal Club to reply.');
       return;
     }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
@@ -785,8 +822,9 @@ const NS_LOGIN_URL = '/login';
   }
 
   async function submitReply(annId) {
-    if (!isLoggedIn()) {
-      openMemberstackLogin();
+    if (!hasPaidAccess()) {
+      if (!isLoggedIn()) openMemberstackLogin();
+      else alert('Join the Normal Club to reply.');
       return;
     }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
@@ -1037,10 +1075,10 @@ const NS_LOGIN_URL = '/login';
       : allAnnotations;
     panelBadgeCount.textContent = '(' + allAnnotations.length + ')';
 
-    const signinPromptHtml = !isLoggedIn()
+    const signinPromptHtml = !hasPaidAccess()
       ? '<div class="ns-signin-prompt">' +
-        'Sign in to add annotations, replies, and likes.' +
-        '<br><button type="button" data-ns-signin>Sign in</button>' +
+        'Join the Normal Club to post.' +
+        '<br><button type="button" data-ns-signin>Join</button>' +
         '</div>'
       : '';
 
@@ -1050,7 +1088,7 @@ const NS_LOGIN_URL = '/login';
         '<p style="color:#675b4e;font-size:14px;text-align:center;padding:2rem 0">' +
         (filterPid
           ? 'No annotations on this paragraph yet.'
-          : isLoggedIn()
+          : hasPaidAccess()
             ? 'No annotations yet. Highlight text to start.'
             : 'No annotations yet.') +
         '</p>';
