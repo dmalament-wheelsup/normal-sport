@@ -2,6 +2,7 @@
 const NS_SUPABASE_URL = 'https://rayuxgfjmhmyblksmuta.supabase.co';
 const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
 const NS_LOGIN_URL = '/login';
+const NS_JOIN_URL = '/become-a-member';
 const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 // ──────────────────────────────────────────────────────
 
@@ -121,12 +122,17 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     setTimeout(tick, intervalMs);
   }
 
-  function openMemberstackLogin() {
+  function redirectTo(url) {
     const returnTo =
       window.location.pathname + window.location.search + window.location.hash;
-    const sep = NS_LOGIN_URL.includes('?') ? '&' : '?';
-    window.location.href =
-      NS_LOGIN_URL + sep + 'returnTo=' + encodeURIComponent(returnTo);
+    const sep = url.includes('?') ? '&' : '?';
+    window.location.href = url + sep + 'returnTo=' + encodeURIComponent(returnTo);
+  }
+  function openMemberstackLogin() { redirectTo(NS_LOGIN_URL); }
+  function openJoinPage() { redirectTo(NS_JOIN_URL); }
+  function promptForAccess() {
+    if (!isLoggedIn()) openMemberstackLogin();
+    else openJoinPage();
   }
 
   await loadMember();
@@ -599,8 +605,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     if (!pending) return;
     if (!hasPaidAccess()) {
       hideSelectionUI();
-      if (!isLoggedIn()) openMemberstackLogin();
-      else alert('Join the Normal Club to post annotations.');
+      promptForAccess();
       return;
     }
     hideSelectionUI();
@@ -612,7 +617,11 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   }
   function applyAuthState() {
     const paid = hasPaidAccess();
-    const label = paid ? '✎ Annotate' : '✎ Join the Normal Club to post';
+    const label = paid
+      ? '✎ Annotate'
+      : isLoggedIn()
+        ? '✎ Join the Normal Club to post'
+        : '✎ Log in to post';
     annotateBtn.textContent = label;
     fab.textContent = label;
   }
@@ -639,8 +648,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     const text = textArea.value.trim();
     if (!text || !pending) return;
     if (!hasPaidAccess()) {
-      if (!isLoggedIn()) openMemberstackLogin();
-      else alert('Join the Normal Club to post annotations.');
+      promptForAccess();
       return;
     }
     const author = memberName();
@@ -689,8 +697,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
   async function toggleLike(annId) {
     if (!hasPaidAccess()) {
-      if (!isLoggedIn()) openMemberstackLogin();
-      else alert('Join the Normal Club to like annotations.');
+      promptForAccess();
       return;
     }
     const ann = allAnnotations.find((a) => a.id === annId);
@@ -781,8 +788,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   // ─── Reply form ────────────────────────────────────
   function toggleReplyForm(annId) {
     if (!hasPaidAccess()) {
-      if (!isLoggedIn()) openMemberstackLogin();
-      else alert('Join the Normal Club to reply.');
+      promptForAccess();
       return;
     }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
@@ -823,8 +829,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
   async function submitReply(annId) {
     if (!hasPaidAccess()) {
-      if (!isLoggedIn()) openMemberstackLogin();
-      else alert('Join the Normal Club to reply.');
+      promptForAccess();
       return;
     }
     const form = panel.querySelector('[data-reply-form="' + annId + '"]');
@@ -1077,8 +1082,11 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
     const signinPromptHtml = !hasPaidAccess()
       ? '<div class="ns-signin-prompt">' +
-        'Join the Normal Club to post.' +
-        '<br><button type="button" data-ns-signin>Join</button>' +
+        (isLoggedIn()
+          ? 'Join the Normal Club to post.' +
+            '<br><button type="button" data-ns-signin>Join</button>'
+          : 'Log in to post.' +
+            '<br><button type="button" data-ns-signin>Log in</button>') +
         '</div>'
       : '';
 
@@ -1095,7 +1103,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       panelList.querySelectorAll('[data-ns-signin]').forEach((b) => {
         b.addEventListener('click', (e) => {
           e.stopPropagation();
-          openMemberstackLogin();
+          promptForAccess();
         });
       });
       return;
