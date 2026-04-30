@@ -257,6 +257,47 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     );
   }
 
+  function formatTime(d) {
+    return d
+      .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      .replace(/\s?([AP]M)$/i, (_, p) => ' ' + p.toUpperCase());
+  }
+
+  function formatRelativeDate(input) {
+    const d = input instanceof Date ? input : new Date(input);
+    if (isNaN(d.getTime())) return '';
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfDate = new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+    );
+    const dayDiff = Math.round(
+      (startOfToday - startOfDate) / 86400000,
+    );
+
+    if (dayDiff <= 0) return 'Today ' + formatTime(d);
+    if (dayDiff === 1) return 'Yesterday ' + formatTime(d);
+    if (dayDiff <= 6) return dayDiff + ' days ago';
+
+    const weekDiff = Math.floor(dayDiff / 7);
+    if (weekDiff <= 4) return weekDiff + (weekDiff === 1 ? ' Week Ago' : ' Weeks Ago');
+
+    let monthDiff =
+      (now.getFullYear() - d.getFullYear()) * 12 +
+      (now.getMonth() - d.getMonth());
+    if (now.getDate() < d.getDate()) monthDiff -= 1;
+    if (monthDiff < 1) monthDiff = 1;
+    if (monthDiff <= 12) return monthDiff + (monthDiff === 1 ? ' Month Ago' : ' Months Ago');
+
+    return 'Over a year ago';
+  }
+
   // ─── Inject styles ─────────────────────────────────
   const style = document.createElement('style');
   style.textContent = `
@@ -901,7 +942,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       '<div class="ns-reply-author">' +
       escapeHtml(reply.author_name) +
       '<span class="ns-reply-date">· ' +
-      new Date(reply.created_at).toLocaleDateString() +
+      escapeHtml(formatRelativeDate(reply.created_at)) +
       '</span></div>' +
       '<div class="ns-reply-text">' +
       escapeHtml(reply.reply_text) +
@@ -1139,7 +1180,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
                       '<div class="ns-reply-author">' +
                       escapeHtml(r.author_name) +
                       '<span class="ns-reply-date">· ' +
-                      new Date(r.created_at).toLocaleDateString() +
+                      escapeHtml(formatRelativeDate(r.created_at)) +
                       '</span>' +
                       '</div>' +
                       '<div class="ns-reply-text">' +
@@ -1167,7 +1208,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
             escapeHtml(a.author_name) +
             '</span>' +
             '<span class="ns-date">' +
-            new Date(a.created_at).toLocaleDateString() +
+            escapeHtml(formatRelativeDate(a.created_at)) +
             '</span>' +
             '</div>' +
             '<div class="ns-card-footer-actions">' +
