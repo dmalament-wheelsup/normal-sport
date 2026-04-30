@@ -7,6 +7,17 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
+  // ─── Feature flag ──────────────────────────────────
+  // Annotations are only enabled when the URL has an "annotated" query param
+  // (e.g. ?annotated). Bail early otherwise so no UI is injected and no
+  // Supabase calls are made.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('annotated')) return;
+  } catch (e) {
+    return;
+  }
+
   // ─── Browser ID for like tracking ──────────────────
   function getBrowserId() {
     let id = null;
