@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────
-const NS_SUPABASE_URL = 'https://rayuxgfjmhmyblksmuta.supabase.co';
-const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
+const NS_SUPABASE_URL = 'https://vnlrteehwvmloxfrgwcc.supabase.co';
+const NS_SUPABASE_KEY = 'sb_publishable_pGef4TdDfG_jnp64DnMXbA_fLMsCgL-';
 const NS_LOGIN_URL = '/login';
 const NS_JOIN_URL = '/become-a-member';
 const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
@@ -88,7 +88,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     );
     for (const el of gated) {
       const style = window.getComputedStyle(el);
-      if (style.display !== 'none' && style.visibility !== 'hidden') return true;
+      if (style.display !== 'none' && style.visibility !== 'hidden')
+        return true;
     }
     return false;
   }
@@ -137,10 +138,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     const returnTo =
       window.location.pathname + window.location.search + window.location.hash;
     const sep = url.includes('?') ? '&' : '?';
-    window.location.href = url + sep + 'returnTo=' + encodeURIComponent(returnTo);
+    window.location.href =
+      url + sep + 'returnTo=' + encodeURIComponent(returnTo);
   }
-  function openMemberstackLogin() { redirectTo(NS_LOGIN_URL); }
-  function openJoinPage() { redirectTo(NS_JOIN_URL); }
+  function openMemberstackLogin() {
+    redirectTo(NS_LOGIN_URL);
+  }
+  function openJoinPage() {
+    redirectTo(NS_JOIN_URL);
+  }
   function promptForAccess() {
     if (!isLoggedIn()) openMemberstackLogin();
     else openJoinPage();
@@ -284,28 +290,24 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       now.getMonth(),
       now.getDate(),
     );
-    const startOfDate = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-    );
-    const dayDiff = Math.round(
-      (startOfToday - startOfDate) / 86400000,
-    );
+    const startOfDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
 
     if (dayDiff <= 0) return 'Today ' + formatTime(d);
     if (dayDiff === 1) return 'Yesterday ' + formatTime(d);
     if (dayDiff <= 6) return dayDiff + ' days ago';
 
     const weekDiff = Math.floor(dayDiff / 7);
-    if (weekDiff <= 4) return weekDiff + (weekDiff === 1 ? ' Week Ago' : ' Weeks Ago');
+    if (weekDiff <= 4)
+      return weekDiff + (weekDiff === 1 ? ' Week Ago' : ' Weeks Ago');
 
     let monthDiff =
       (now.getFullYear() - d.getFullYear()) * 12 +
       (now.getMonth() - d.getMonth());
     if (now.getDate() < d.getDate()) monthDiff -= 1;
     if (monthDiff < 1) monthDiff = 1;
-    if (monthDiff <= 12) return monthDiff + (monthDiff === 1 ? ' Month Ago' : ' Months Ago');
+    if (monthDiff <= 12)
+      return monthDiff + (monthDiff === 1 ? ' Month Ago' : ' Months Ago');
 
     return 'Over a year ago';
   }
