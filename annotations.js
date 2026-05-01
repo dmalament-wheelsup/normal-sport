@@ -335,7 +335,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     #ns-modal .ns-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #ff8690; font-weight: 600; margin-bottom: 12px; }
     #ns-modal-quote { background: #ff869033; border-left: 2px solid #ff8690; padding: 12px 16px; font-style: italic; font-size: 15px; line-height: 140%; color: #5f2126; margin-bottom: 20px; border-radius: 0 12px 12px 0; max-height: 80px; overflow: hidden; }
     #ns-modal label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
-    #ns-modal input, #ns-modal textarea { width: 100%; border: 1px solid #484037; background: #fff7ee; padding: 12px 16px; font-family: inherit; font-size: 15px; color: #484037; border-radius: 12px; outline: none; margin-bottom: 16px; line-height: 150%; resize: vertical; box-sizing: border-box; }
+    #ns-modal input, #ns-modal textarea { width: 100%; border: 1px solid #484037; background: #fff7ee; padding: 12px 16px; font-family: inherit; font-size: 16px; color: #484037; border-radius: 12px; outline: none; margin-bottom: 16px; line-height: 150%; resize: vertical; box-sizing: border-box; }
     #ns-modal input:focus, #ns-modal textarea:focus { border-color: #5f2126; }
     .ns-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
     .ns-btn-cancel, .ns-btn-submit { font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 20px; border-radius: 40px; cursor: pointer; border: 1px solid #484037; line-height: 100%; }
@@ -404,7 +404,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
     .ns-reply-form { padding: 10px 14px; border-top: 1px solid #48403726; background: #fff7ee; display: none; }
     .ns-reply-form.ns-open { display: block; }
-    .ns-reply-form input, .ns-reply-form textarea { width: 100%; border: 1px solid #484037; background: #fffdfb; padding: 8px 12px; font-family: inherit; font-size: 13px; color: #484037; border-radius: 10px; outline: none; margin-bottom: 8px; resize: none; box-sizing: border-box; }
+    .ns-reply-form input, .ns-reply-form textarea { width: 100%; border: 1px solid #484037; background: #fffdfb; padding: 8px 12px; font-family: inherit; font-size: 16px; color: #484037; border-radius: 10px; outline: none; margin-bottom: 8px; resize: none; box-sizing: border-box; }
     .ns-reply-form input { height: 34px; }
     .ns-reply-form textarea { line-height: 140%; min-height: 60px; }
     .ns-reply-form input:focus, .ns-reply-form textarea:focus { border-color: #5f2126; }
@@ -713,6 +713,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       promptForAccess();
       return;
     }
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     const author = memberName();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
@@ -988,6 +991,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     const text = textIn.value.trim();
     const author = memberName();
     if (!text) return;
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     const ann = allAnnotations.find((a) => a.id === annId);
     if (!ann) return;
     const sBtn = form.querySelector('.ns-reply-btn-submit');
