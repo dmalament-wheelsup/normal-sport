@@ -3,7 +3,6 @@ const NS_SUPABASE_URL = 'https://vnlrteehwvmloxfrgwcc.supabase.co';
 const NS_SUPABASE_KEY = 'sb_publishable_pGef4TdDfG_jnp64DnMXbA_fLMsCgL-';
 const NS_LOGIN_URL = '/login';
 const NS_JOIN_URL = '/become-a-member';
-const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
@@ -64,34 +63,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
   function hasPaidAccess() {
     if (!currentMember) return false;
-
-    // 1. Check Memberstack data: planConnections / permissions / contentGroups
     const planConnections = currentMember.planConnections || [];
-    for (const pc of planConnections) {
-      if (pc.status && pc.status !== 'ACTIVE' && pc.status !== 'TRIALING')
-        continue;
-      const groups = pc.contentGroups || pc.contentGroupIds || [];
-      if (Array.isArray(groups)) {
-        for (const g of groups) {
-          const name = typeof g === 'string' ? g : g && (g.name || g.id);
-          if (name === NS_PAID_GATE) return true;
-        }
-      }
-    }
-    const perms = currentMember.permissions || [];
-    if (Array.isArray(perms) && perms.includes(NS_PAID_GATE)) return true;
-
-    // 2. Fallback: trust Memberstack's own DOM gating. If a non-hidden
-    //    element with data-ms-content="ns-members" exists, the member has access.
-    const gated = document.querySelectorAll(
-      '[data-ms-content="' + NS_PAID_GATE + '"]',
+    return planConnections.some(
+      (pc) =>
+        pc &&
+        pc.active === true &&
+        pc.type === 'SUBSCRIPTION' &&
+        pc.payment &&
+        pc.payment.status === 'PAID',
     );
-    for (const el of gated) {
-      const style = window.getComputedStyle(el);
-      if (style.display !== 'none' && style.visibility !== 'hidden')
-        return true;
-    }
-    return false;
   }
 
   function memberId() {
