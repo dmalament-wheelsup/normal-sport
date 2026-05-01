@@ -397,6 +397,10 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     .ns-reply-author { font-size: 12px; font-weight: 600; color: #484037; margin-bottom: 3px; }
     .ns-reply-date { font-weight: 400; color: #675b4e; margin-left: 6px; }
     .ns-reply-text { font-size: 13px; line-height: 145%; color: #484037; }
+    .ns-reply-delete-btn { position: absolute; top: 8px; right: 10px; background: transparent; border: none; color: #675b4e; padding: 4px 8px; border-radius: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 100%; transition: all 0.15s; }
+    .ns-reply-delete-btn:hover { background: #ff869033; color: #5f2126; }
+    .ns-reply-delete-btn svg { width: 12px; height: 12px; stroke-width: 2; }
+    .ns-reply-delete-btn.ns-confirming { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; }
 
     .ns-reply-form { padding: 10px 14px; border-top: 1px solid #48403726; background: #fff7ee; display: none; }
     .ns-reply-form.ns-open { display: block; }
@@ -843,6 +847,94 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     pendingDeletes.set(annId, timer);
   }
 
+  function deleteReply(replyId, btnEl) {
+    const mid = memberId();
+    let parentAnn = null;
+    let reply = null;
+    for (const a of allAnnotations) {
+      const r = (a.replies || []).find((x) => x.id === replyId);
+      if (r) { parentAnn = a; reply = r; break; }
+    }
+    if (!reply || !mid || reply.member_id !== mid) return;
+
+    if (pendingDeletes.has(replyId)) {
+      clearTimeout(pendingDeletes.get(replyId));
+      pendingDeletes.delete(replyId);
+      parentAnn.replies = parentAnn.replies.filter((r) => r.id !== replyId);
+      (async () => {
+        try {
+          await supa(
+            'DELETE',
+            'annotation_replies?id=eq.' + encodeURIComponent(replyId),
+          );
+        } catch (err) {
+          console.warn('[NS] Reply delete sync failed:', err);
+        }
+      })();
+      const replyEl = btnEl.closest('.ns-reply');
+      const card = btnEl.closest('.ns-card');
+      if (replyEl) {
+        replyEl.style.transition = 'opacity 0.2s, transform 0.2s';
+        replyEl.style.opacity = '0';
+        replyEl.style.transform = 'translateX(-12px)';
+        setTimeout(() => {
+          replyEl.remove();
+          const count = parentAnn.replies.length;
+          if (card) {
+            const togBtn = card.querySelector(
+              '[data-replies-toggle="' + parentAnn.id + '"]',
+            );
+            const repliesContainer = card.querySelector(
+              '[data-replies="' + parentAnn.id + '"]',
+            );
+            if (count === 0) {
+              if (togBtn) togBtn.remove();
+              if (repliesContainer) repliesContainer.remove();
+            } else if (togBtn) {
+              const isOpen =
+                repliesContainer && repliesContainer.classList.contains('ns-open');
+              const label = togBtn.querySelector('span');
+              if (label) {
+                label.textContent =
+                  (isOpen ? 'Hide ' : 'Show ') +
+                  count +
+                  ' ' +
+                  (count === 1 ? 'reply' : 'replies');
+              }
+            }
+            const replyBtnLabel = card.querySelector(
+              '[data-reply-btn="' + parentAnn.id + '"] span',
+            );
+            if (replyBtnLabel) {
+              replyBtnLabel.textContent = count
+                ? 'Reply · ' + count
+                : 'Reply';
+            }
+          }
+        }, 180);
+      }
+      return;
+    }
+    btnEl.classList.add('ns-confirming');
+    const orig = btnEl.dataset.origLabel || btnEl.textContent;
+    btnEl.dataset.origLabel = orig;
+    btnEl.textContent = 'Confirm?';
+    const timer = setTimeout(() => {
+      btnEl.classList.remove('ns-confirming');
+      btnEl.innerHTML = REPLY_DELETE_ICON_HTML;
+      pendingDeletes.delete(replyId);
+    }, 3000);
+    pendingDeletes.set(replyId, timer);
+  }
+
+  const REPLY_DELETE_ICON_HTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
+    '<polyline points="3 6 5 6 21 6"/>' +
+    '<path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/>' +
+    '<path d="M10 11v6M14 11v6"/>' +
+    '<path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>' +
+    '</svg>';
+
   // ─── Reply form ────────────────────────────────────
   function toggleReplyForm(annId) {
     if (!hasPaidAccess()) {
@@ -955,7 +1047,17 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
     const replyEl = document.createElement('div');
     replyEl.className = 'ns-reply';
+    replyEl.dataset.replyId = String(reply.id);
+    const rIsOwner =
+      memberId() && reply.member_id && reply.member_id === memberId();
     replyEl.innerHTML =
+      (rIsOwner
+        ? '<button class="ns-reply-delete-btn" data-reply-delete-btn="' +
+          escapeHtml(String(reply.id)) +
+          '" aria-label="Delete reply">' +
+          REPLY_DELETE_ICON_HTML +
+          '</button>'
+        : '') +
       '<div class="ns-reply-author">' +
       escapeHtml(reply.author_name) +
       '<span class="ns-reply-date">· ' +
@@ -965,6 +1067,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       escapeHtml(reply.reply_text) +
       '</div>';
     repliesContainer.appendChild(replyEl);
+    if (rIsOwner) {
+      const delBtn = replyEl.querySelector('[data-reply-delete-btn]');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteReply(delBtn.dataset.replyDeleteBtn, delBtn);
+        });
+      }
+    }
 
     const replyBtnLabel = card.querySelector(
       '[data-reply-btn="' + annId + '"] span',
@@ -972,7 +1083,6 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     if (replyBtnLabel)
       replyBtnLabel.textContent = 'Reply · ' + ann.replies.length;
 
-    nameIn.value = '';
     textIn.value = '';
     form.classList.remove('ns-open');
   }
@@ -1198,9 +1308,19 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
                 escapeHtml(aid) +
                 '">' +
                 a.replies
-                  .map(
-                    (r) =>
-                      '<div class="ns-reply">' +
+                  .map((r) => {
+                    const rIsOwner = mid && r.member_id && r.member_id === mid;
+                    return (
+                      '<div class="ns-reply" data-reply-id="' +
+                      escapeHtml(String(r.id)) +
+                      '">' +
+                      (rIsOwner
+                        ? '<button class="ns-reply-delete-btn" data-reply-delete-btn="' +
+                          escapeHtml(String(r.id)) +
+                          '" aria-label="Delete reply">' +
+                          REPLY_DELETE_ICON_HTML +
+                          '</button>'
+                        : '') +
                       '<div class="ns-reply-author">' +
                       escapeHtml(r.author_name) +
                       '<span class="ns-reply-date">· ' +
@@ -1210,8 +1330,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
                       '<div class="ns-reply-text">' +
                       escapeHtml(r.reply_text) +
                       '</div>' +
-                      '</div>',
-                  )
+                      '</div>'
+                    );
+                  })
                   .join('') +
                 '</div>'
               : '';
@@ -1311,6 +1432,12 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         deleteAnnotation(btn.dataset.deleteBtn, btn);
+      });
+    });
+    panelList.querySelectorAll('[data-reply-delete-btn]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteReply(btn.dataset.replyDeleteBtn, btn);
       });
     });
     panelList.querySelectorAll('[data-replies-toggle]').forEach((btn) => {
