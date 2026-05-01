@@ -1533,6 +1533,121 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     }
   }
 
+  // ─── Realtime ──────────────────────────────────────
+  function setupRealtime() {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      console.warn(
+        '[NS] Supabase JS SDK not found on window — realtime disabled.',
+      );
+      return;
+    }
+    let client;
+    try {
+      client = window.supabase.createClient(NS_SUPABASE_URL, NS_SUPABASE_KEY);
+    } catch (e) {
+      console.warn('[NS] Failed to create Supabase client:', e);
+      return;
+    }
+
+    function handleAnnotationInsert(ann) {
+      if (!ann || !ann.id) return;
+      if (allAnnotations.some((a) => a.id === ann.id)) return;
+      allAnnotations.push({ ...ann, likes: ann.likes || 0, replies: [] });
+      applyHighlights();
+      renderAnnotations();
+      updateToggleBadge();
+    }
+
+    function handleAnnotationUpdate(ann) {
+      if (!ann || !ann.id) return;
+      const idx = allAnnotations.findIndex((a) => a.id === ann.id);
+      if (idx === -1) return;
+      const existing = allAnnotations[idx];
+      allAnnotations[idx] = {
+        ...existing,
+        ...ann,
+        replies: existing.replies || [],
+      };
+      renderAnnotations();
+    }
+
+    function handleAnnotationDelete(ann) {
+      if (!ann || !ann.id) return;
+      if (!allAnnotations.some((a) => a.id === ann.id)) return;
+      allAnnotations = allAnnotations.filter((a) => a.id !== ann.id);
+      likedAnnotations.delete(ann.id);
+      applyHighlights();
+      renderAnnotations();
+      updateToggleBadge();
+    }
+
+    function handleReplyInsert(reply) {
+      if (!reply || !reply.id || !reply.annotation_id) return;
+      const ann = allAnnotations.find((a) => a.id === reply.annotation_id);
+      if (!ann) return;
+      ann.replies = ann.replies || [];
+      if (ann.replies.some((r) => r.id === reply.id)) return;
+      ann.replies.push(reply);
+      renderAnnotations();
+    }
+
+    function handleReplyUpdate(reply) {
+      if (!reply || !reply.id || !reply.annotation_id) return;
+      const ann = allAnnotations.find((a) => a.id === reply.annotation_id);
+      if (!ann || !ann.replies) return;
+      const idx = ann.replies.findIndex((r) => r.id === reply.id);
+      if (idx === -1) return;
+      ann.replies[idx] = reply;
+      renderAnnotations();
+    }
+
+    function handleReplyDelete(reply) {
+      if (!reply || !reply.id) return;
+      let changed = false;
+      for (const ann of allAnnotations) {
+        if (!ann.replies) continue;
+        const before = ann.replies.length;
+        ann.replies = ann.replies.filter((r) => r.id !== reply.id);
+        if (ann.replies.length !== before) changed = true;
+      }
+      if (changed) renderAnnotations();
+    }
+
+    const annotationsChannel = client
+      .channel('newsletter:' + slug + ':annotations')
+      .on('broadcast', { event: 'annotation_insert' }, (msg) =>
+        handleAnnotationInsert(msg.payload && msg.payload.annotation),
+      )
+      .on('broadcast', { event: 'annotation_update' }, (msg) =>
+        handleAnnotationUpdate(msg.payload && msg.payload.annotation),
+      )
+      .on('broadcast', { event: 'annotation_delete' }, (msg) =>
+        handleAnnotationDelete(msg.payload && msg.payload.annotation),
+      )
+      .subscribe();
+
+    const repliesChannel = client
+      .channel('newsletter:' + slug + ':comments')
+      .on('broadcast', { event: 'annotation_reply_insert' }, (msg) =>
+        handleReplyInsert(msg.payload && msg.payload.reply),
+      )
+      .on('broadcast', { event: 'annotation_reply_update' }, (msg) =>
+        handleReplyUpdate(msg.payload && msg.payload.reply),
+      )
+      .on('broadcast', { event: 'annotation_reply_delete' }, (msg) =>
+        handleReplyDelete(msg.payload && msg.payload.reply),
+      )
+      .subscribe();
+
+    window.addEventListener('beforeunload', () => {
+      try {
+        client.removeChannel(annotationsChannel);
+        client.removeChannel(repliesChannel);
+      } catch (e) {}
+    });
+  }
+
   loadAnnotations();
+  setupRealtime();
   console.log('[NS Annotations] Initialized for slug:', slug);
 })();
