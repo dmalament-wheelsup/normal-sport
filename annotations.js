@@ -340,10 +340,10 @@ const NS_JOIN_URL = '/become-a-member';
     .ns-highlight-toggle input:focus-visible + .ns-toggle-slider { outline: 2px solid #9ed5fe; outline-offset: 2px; }
     .ns-toggle-label { font-size: 13px; color: #484037; font-weight: 500; }
 
-    .ns-control-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #48403726; }
-    .ns-control-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
-    .ns-control-group { display: flex; gap: 6px; }
-    .ns-control-btn { flex: 1; background: transparent; border: 1px solid #484037; color: #484037; font-family: inherit; font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 20px; cursor: pointer; line-height: 100%; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .ns-controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #48403726; }
+    .ns-control-group { display: inline-flex; align-items: center; gap: 4px; }
+    .ns-control-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: #675b4e; margin-right: 2px; }
+    .ns-control-btn { background: transparent; border: 1px solid #484037; color: #484037; font-family: inherit; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 12px; cursor: pointer; line-height: 100%; transition: background 0.15s, color 0.15s, border-color 0.15s; }
     .ns-control-btn:hover { background: #48403714; }
     .ns-control-btn.ns-active { background: #ff8690; color: #5f2126; border-color: #5f2126; }
 
@@ -524,15 +524,13 @@ const NS_JOIN_URL = '/become-a-member';
     filterMine = localStorage.getItem('ns_filter_mine') === 'true';
   } catch (e) {}
 
-  function buildControlSection(labelText, options, getValue, onSelect) {
-    const wrap = document.createElement('div');
-    wrap.className = 'ns-control-section';
-    const label = document.createElement('div');
-    label.className = 'ns-control-label';
-    label.textContent = labelText;
-    wrap.appendChild(label);
+  function buildControlGroup(labelText, options, getValue, onSelect) {
     const group = document.createElement('div');
     group.className = 'ns-control-group';
+    const label = document.createElement('span');
+    label.className = 'ns-control-label';
+    label.textContent = labelText;
+    group.appendChild(label);
     const buttons = options.map((opt) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -552,13 +550,15 @@ const NS_JOIN_URL = '/become-a-member';
         b.classList.toggle('ns-active', b.dataset.value === current);
       });
     }
-    wrap.appendChild(group);
     syncActive();
-    return { wrap, syncActive };
+    return { group, syncActive };
   }
 
-  const sortSection = buildControlSection(
-    'Sort by',
+  const controlsRow = document.createElement('div');
+  controlsRow.className = 'ns-controls-row';
+
+  const sortSection = buildControlGroup(
+    'Sort',
     [
       { label: 'Newest', value: 'newest' },
       { label: 'Oldest', value: 'oldest' },
@@ -572,9 +572,9 @@ const NS_JOIN_URL = '/become-a-member';
       renderAnnotations();
     },
   );
-  panel.appendChild(sortSection.wrap);
+  controlsRow.appendChild(sortSection.group);
 
-  const filterSection = buildControlSection(
+  const filterSection = buildControlGroup(
     'Filter',
     [
       { label: 'All', value: 'all' },
@@ -589,10 +589,11 @@ const NS_JOIN_URL = '/become-a-member';
       renderAnnotations();
     },
   );
-  panel.appendChild(filterSection.wrap);
+  controlsRow.appendChild(filterSection.group);
+  panel.appendChild(controlsRow);
 
   function updateFilterSectionVisibility() {
-    filterSection.wrap.style.display = isLoggedIn() ? '' : 'none';
+    filterSection.group.style.display = isLoggedIn() ? '' : 'none';
   }
   updateFilterSectionVisibility();
 
