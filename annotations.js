@@ -340,9 +340,10 @@ const NS_JOIN_URL = '/become-a-member';
     .ns-highlight-toggle input:focus-visible + .ns-toggle-slider { outline: 2px solid #9ed5fe; outline-offset: 2px; }
     .ns-toggle-label { font-size: 13px; color: #484037; font-weight: 500; }
 
-    .ns-controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #48403726; }
-    .ns-control-group { display: inline-flex; align-items: center; gap: 4px; }
-    .ns-control-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: #675b4e; margin-right: 2px; }
+    .ns-controls-row { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #48403726; }
+    .ns-control-group { display: flex; flex-direction: column; gap: 6px; }
+    .ns-control-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; color: #675b4e; }
+    .ns-control-buttons { display: flex; gap: 4px; }
     .ns-control-btn { background: transparent; border: 1px solid #484037; color: #484037; font-family: inherit; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 12px; cursor: pointer; line-height: 100%; transition: background 0.15s, color 0.15s, border-color 0.15s; }
     .ns-control-btn:hover { background: #48403714; }
     .ns-control-btn.ns-active { background: #ff8690; color: #5f2126; border-color: #5f2126; }
@@ -527,10 +528,12 @@ const NS_JOIN_URL = '/become-a-member';
   function buildControlGroup(labelText, options, getValue, onSelect) {
     const group = document.createElement('div');
     group.className = 'ns-control-group';
-    const label = document.createElement('span');
+    const label = document.createElement('div');
     label.className = 'ns-control-label';
     label.textContent = labelText;
     group.appendChild(label);
+    const buttonsWrap = document.createElement('div');
+    buttonsWrap.className = 'ns-control-buttons';
     const buttons = options.map((opt) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -541,9 +544,10 @@ const NS_JOIN_URL = '/become-a-member';
         onSelect(opt.value);
         syncActive();
       });
-      group.appendChild(btn);
+      buttonsWrap.appendChild(btn);
       return btn;
     });
+    group.appendChild(buttonsWrap);
     function syncActive() {
       const current = getValue();
       buttons.forEach((b) => {
