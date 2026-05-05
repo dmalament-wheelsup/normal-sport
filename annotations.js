@@ -710,7 +710,7 @@ const NS_JOIN_URL = '/become-a-member';
         likes: 0,
       });
       if (Array.isArray(rows) && rows[0]) {
-        allAnnotations.push({ ...rows[0], replies: [] });
+        allAnnotations.unshift({ ...rows[0], replies: [] });
         applyHighlights();
         renderAnnotations();
         updateToggleBadge();
@@ -1461,7 +1461,7 @@ const NS_JOIN_URL = '/become-a-member';
         'GET',
         'annotations?newsletter_slug=eq.' +
           encodeURIComponent(slug) +
-          '&order=created_at.asc',
+          '&order=created_at.desc',
       );
       if (!Array.isArray(annotations) || !annotations.length) {
         allAnnotations = [];
@@ -1532,7 +1532,7 @@ const NS_JOIN_URL = '/become-a-member';
     function handleAnnotationInsert(ann) {
       if (!ann || !ann.id) return;
       if (allAnnotations.some((a) => a.id === ann.id)) return;
-      allAnnotations.push({ ...ann, likes: ann.likes || 0, replies: [] });
+      allAnnotations.unshift({ ...ann, likes: ann.likes || 0, replies: [] });
       applyHighlights();
       renderAnnotations();
       updateToggleBadge();
