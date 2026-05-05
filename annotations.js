@@ -1,9 +1,8 @@
 // ─── CONFIG ───────────────────────────────────────────
-const NS_SUPABASE_URL = 'https://rayuxgfjmhmyblksmuta.supabase.co';
-const NS_SUPABASE_KEY = 'sb_publishable_b07esV7lw3LZp2aq_pRKZg_BxlmudB3';
+const NS_SUPABASE_URL = 'https://vnlrteehwvmloxfrgwcc.supabase.co';
+const NS_SUPABASE_KEY = 'sb_publishable_pGef4TdDfG_jnp64DnMXbA_fLMsCgL-';
 const NS_LOGIN_URL = '/login';
 const NS_JOIN_URL = '/become-a-member';
-const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
@@ -64,33 +63,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
   function hasPaidAccess() {
     if (!currentMember) return false;
-
-    // 1. Check Memberstack data: planConnections / permissions / contentGroups
     const planConnections = currentMember.planConnections || [];
-    for (const pc of planConnections) {
-      if (pc.status && pc.status !== 'ACTIVE' && pc.status !== 'TRIALING')
-        continue;
-      const groups = pc.contentGroups || pc.contentGroupIds || [];
-      if (Array.isArray(groups)) {
-        for (const g of groups) {
-          const name = typeof g === 'string' ? g : g && (g.name || g.id);
-          if (name === NS_PAID_GATE) return true;
-        }
-      }
-    }
-    const perms = currentMember.permissions || [];
-    if (Array.isArray(perms) && perms.includes(NS_PAID_GATE)) return true;
-
-    // 2. Fallback: trust Memberstack's own DOM gating. If a non-hidden
-    //    element with data-ms-content="ns-members" exists, the member has access.
-    const gated = document.querySelectorAll(
-      '[data-ms-content="' + NS_PAID_GATE + '"]',
+    return planConnections.some(
+      (pc) =>
+        pc &&
+        pc.active === true &&
+        pc.type === 'SUBSCRIPTION' &&
+        pc.payment &&
+        pc.payment.status === 'PAID',
     );
-    for (const el of gated) {
-      const style = window.getComputedStyle(el);
-      if (style.display !== 'none' && style.visibility !== 'hidden') return true;
-    }
-    return false;
   }
 
   function memberId() {
@@ -137,10 +118,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     const returnTo =
       window.location.pathname + window.location.search + window.location.hash;
     const sep = url.includes('?') ? '&' : '?';
-    window.location.href = url + sep + 'returnTo=' + encodeURIComponent(returnTo);
+    window.location.href =
+      url + sep + 'returnTo=' + encodeURIComponent(returnTo);
   }
-  function openMemberstackLogin() { redirectTo(NS_LOGIN_URL); }
-  function openJoinPage() { redirectTo(NS_JOIN_URL); }
+  function openMemberstackLogin() {
+    redirectTo(NS_LOGIN_URL);
+  }
+  function openJoinPage() {
+    redirectTo(NS_JOIN_URL);
+  }
   function promptForAccess() {
     if (!isLoggedIn()) openMemberstackLogin();
     else openJoinPage();
@@ -252,6 +238,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   let allAnnotations = [];
   const likedAnnotations = new Set();
   const pendingDeletes = new Map();
+  const locatableIds = new Set();
 
   // ─── Helpers ───────────────────────────────────────
   function escapeHtml(s) {
@@ -283,28 +270,24 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       now.getMonth(),
       now.getDate(),
     );
-    const startOfDate = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-    );
-    const dayDiff = Math.round(
-      (startOfToday - startOfDate) / 86400000,
-    );
+    const startOfDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
 
     if (dayDiff <= 0) return 'Today ' + formatTime(d);
     if (dayDiff === 1) return 'Yesterday ' + formatTime(d);
     if (dayDiff <= 6) return dayDiff + ' days ago';
 
     const weekDiff = Math.floor(dayDiff / 7);
-    if (weekDiff <= 4) return weekDiff + (weekDiff === 1 ? ' Week Ago' : ' Weeks Ago');
+    if (weekDiff <= 4)
+      return weekDiff + (weekDiff === 1 ? ' Week Ago' : ' Weeks Ago');
 
     let monthDiff =
       (now.getFullYear() - d.getFullYear()) * 12 +
       (now.getMonth() - d.getMonth());
     if (now.getDate() < d.getDate()) monthDiff -= 1;
     if (monthDiff < 1) monthDiff = 1;
-    if (monthDiff <= 12) return monthDiff + (monthDiff === 1 ? ' Month Ago' : ' Months Ago');
+    if (monthDiff <= 12)
+      return monthDiff + (monthDiff === 1 ? ' Month Ago' : ' Months Ago');
 
     return 'Over a year ago';
   }
@@ -332,7 +315,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     #ns-modal .ns-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #ff8690; font-weight: 600; margin-bottom: 12px; }
     #ns-modal-quote { background: #ff869033; border-left: 2px solid #ff8690; padding: 12px 16px; font-style: italic; font-size: 15px; line-height: 140%; color: #5f2126; margin-bottom: 20px; border-radius: 0 12px 12px 0; max-height: 80px; overflow: hidden; }
     #ns-modal label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: #675b4e; margin-bottom: 8px; }
-    #ns-modal input, #ns-modal textarea { width: 100%; border: 1px solid #484037; background: #fff7ee; padding: 12px 16px; font-family: inherit; font-size: 15px; color: #484037; border-radius: 12px; outline: none; margin-bottom: 16px; line-height: 150%; resize: vertical; box-sizing: border-box; }
+    #ns-modal input, #ns-modal textarea { width: 100%; border: 1px solid #484037; background: #fff7ee; padding: 12px 16px; font-family: inherit; font-size: 16px; color: #484037; border-radius: 12px; outline: none; margin-bottom: 16px; line-height: 150%; resize: vertical; box-sizing: border-box; }
     #ns-modal input:focus, #ns-modal textarea:focus { border-color: #5f2126; }
     .ns-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
     .ns-btn-cancel, .ns-btn-submit { font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 20px; border-radius: 40px; cursor: pointer; border: 1px solid #484037; line-height: 100%; }
@@ -394,10 +377,14 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     .ns-reply-author { font-size: 12px; font-weight: 600; color: #484037; margin-bottom: 3px; }
     .ns-reply-date { font-weight: 400; color: #675b4e; margin-left: 6px; }
     .ns-reply-text { font-size: 13px; line-height: 145%; color: #484037; }
+    .ns-reply-delete-btn { position: absolute; top: 8px; right: 10px; background: transparent; border: none; color: #675b4e; padding: 4px 8px; border-radius: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 100%; transition: all 0.15s; }
+    .ns-reply-delete-btn:hover { background: #ff869033; color: #5f2126; }
+    .ns-reply-delete-btn svg { width: 12px; height: 12px; stroke-width: 2; }
+    .ns-reply-delete-btn.ns-confirming { background: #ff8690; color: #5f2126; border: 1px solid #5f2126; }
 
     .ns-reply-form { padding: 10px 14px; border-top: 1px solid #48403726; background: #fff7ee; display: none; }
     .ns-reply-form.ns-open { display: block; }
-    .ns-reply-form input, .ns-reply-form textarea { width: 100%; border: 1px solid #484037; background: #fffdfb; padding: 8px 12px; font-family: inherit; font-size: 13px; color: #484037; border-radius: 10px; outline: none; margin-bottom: 8px; resize: none; box-sizing: border-box; }
+    .ns-reply-form input, .ns-reply-form textarea { width: 100%; border: 1px solid #484037; background: #fffdfb; padding: 8px 12px; font-family: inherit; font-size: 16px; color: #484037; border-radius: 10px; outline: none; margin-bottom: 8px; resize: none; box-sizing: border-box; }
     .ns-reply-form input { height: 34px; }
     .ns-reply-form textarea { line-height: 140%; min-height: 60px; }
     .ns-reply-form input:focus, .ns-reply-form textarea:focus { border-color: #5f2126; }
@@ -554,7 +541,7 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   panelClose.addEventListener('click', closePanel);
 
   function updateToggleBadge() {
-    const n = allAnnotations.length;
+    const n = allAnnotations.filter((a) => locatableIds.has(a.id)).length;
     toggleLabel.textContent = 'Annotations';
     toggleBadge.textContent = n;
     toggleBadge.dataset.count = n;
@@ -706,6 +693,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       promptForAccess();
       return;
     }
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     const author = memberName();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
@@ -720,9 +710,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
         likes: 0,
       });
       if (Array.isArray(rows) && rows[0]) {
-        allAnnotations.push({ ...rows[0], replies: [] });
-        renderAnnotations();
+        allAnnotations.unshift({ ...rows[0], replies: [] });
         applyHighlights();
+        renderAnnotations();
         updateToggleBadge();
       }
     } catch (err) {
@@ -820,8 +810,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
         card.style.opacity = '0';
         card.style.transform = 'translateX(-12px)';
         setTimeout(() => {
-          renderAnnotations();
           applyHighlights();
+          renderAnnotations();
           updateToggleBadge();
         }, 180);
       }
@@ -839,6 +829,94 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     }, 3000);
     pendingDeletes.set(annId, timer);
   }
+
+  function deleteReply(replyId, btnEl) {
+    const mid = memberId();
+    let parentAnn = null;
+    let reply = null;
+    for (const a of allAnnotations) {
+      const r = (a.replies || []).find((x) => x.id === replyId);
+      if (r) { parentAnn = a; reply = r; break; }
+    }
+    if (!reply || !mid || reply.member_id !== mid) return;
+
+    if (pendingDeletes.has(replyId)) {
+      clearTimeout(pendingDeletes.get(replyId));
+      pendingDeletes.delete(replyId);
+      parentAnn.replies = parentAnn.replies.filter((r) => r.id !== replyId);
+      (async () => {
+        try {
+          await supa(
+            'DELETE',
+            'annotation_replies?id=eq.' + encodeURIComponent(replyId),
+          );
+        } catch (err) {
+          console.warn('[NS] Reply delete sync failed:', err);
+        }
+      })();
+      const replyEl = btnEl.closest('.ns-reply');
+      const card = btnEl.closest('.ns-card');
+      if (replyEl) {
+        replyEl.style.transition = 'opacity 0.2s, transform 0.2s';
+        replyEl.style.opacity = '0';
+        replyEl.style.transform = 'translateX(-12px)';
+        setTimeout(() => {
+          replyEl.remove();
+          const count = parentAnn.replies.length;
+          if (card) {
+            const togBtn = card.querySelector(
+              '[data-replies-toggle="' + parentAnn.id + '"]',
+            );
+            const repliesContainer = card.querySelector(
+              '[data-replies="' + parentAnn.id + '"]',
+            );
+            if (count === 0) {
+              if (togBtn) togBtn.remove();
+              if (repliesContainer) repliesContainer.remove();
+            } else if (togBtn) {
+              const isOpen =
+                repliesContainer && repliesContainer.classList.contains('ns-open');
+              const label = togBtn.querySelector('span');
+              if (label) {
+                label.textContent =
+                  (isOpen ? 'Hide ' : 'Show ') +
+                  count +
+                  ' ' +
+                  (count === 1 ? 'reply' : 'replies');
+              }
+            }
+            const replyBtnLabel = card.querySelector(
+              '[data-reply-btn="' + parentAnn.id + '"] span',
+            );
+            if (replyBtnLabel) {
+              replyBtnLabel.textContent = count
+                ? 'Reply · ' + count
+                : 'Reply';
+            }
+          }
+        }, 180);
+      }
+      return;
+    }
+    btnEl.classList.add('ns-confirming');
+    const orig = btnEl.dataset.origLabel || btnEl.textContent;
+    btnEl.dataset.origLabel = orig;
+    btnEl.textContent = 'Confirm?';
+    const timer = setTimeout(() => {
+      btnEl.classList.remove('ns-confirming');
+      btnEl.innerHTML = REPLY_DELETE_ICON_HTML;
+      pendingDeletes.delete(replyId);
+    }, 3000);
+    pendingDeletes.set(replyId, timer);
+  }
+
+  const REPLY_DELETE_ICON_HTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
+    '<polyline points="3 6 5 6 21 6"/>' +
+    '<path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/>' +
+    '<path d="M10 11v6M14 11v6"/>' +
+    '<path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>' +
+    '</svg>';
 
   // ─── Reply form ────────────────────────────────────
   function toggleReplyForm(annId) {
@@ -893,6 +971,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     const text = textIn.value.trim();
     const author = memberName();
     if (!text) return;
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     const ann = allAnnotations.find((a) => a.id === annId);
     if (!ann) return;
     const sBtn = form.querySelector('.ns-reply-btn-submit');
@@ -952,7 +1033,17 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
 
     const replyEl = document.createElement('div');
     replyEl.className = 'ns-reply';
+    replyEl.dataset.replyId = String(reply.id);
+    const rIsOwner =
+      memberId() && reply.member_id && reply.member_id === memberId();
     replyEl.innerHTML =
+      (rIsOwner
+        ? '<button class="ns-reply-delete-btn" data-reply-delete-btn="' +
+          escapeHtml(String(reply.id)) +
+          '" aria-label="Delete reply">' +
+          REPLY_DELETE_ICON_HTML +
+          '</button>'
+        : '') +
       '<div class="ns-reply-author">' +
       escapeHtml(reply.author_name) +
       '<span class="ns-reply-date">· ' +
@@ -962,6 +1053,15 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       escapeHtml(reply.reply_text) +
       '</div>';
     repliesContainer.appendChild(replyEl);
+    if (rIsOwner) {
+      const delBtn = replyEl.querySelector('[data-reply-delete-btn]');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteReply(delBtn.dataset.replyDeleteBtn, delBtn);
+        });
+      }
+    }
 
     const replyBtnLabel = card.querySelector(
       '[data-reply-btn="' + annId + '"] span',
@@ -969,7 +1069,6 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     if (replyBtnLabel)
       replyBtnLabel.textContent = 'Reply · ' + ann.replies.length;
 
-    nameIn.value = '';
     textIn.value = '';
     form.classList.remove('ns-open');
   }
@@ -1011,6 +1110,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       p.normalize();
     });
     wrapper.querySelectorAll('.ns-badge').forEach((el) => el.remove());
+
+    locatableIds.clear();
 
     const byPara = {};
     allAnnotations.forEach((a) => {
@@ -1074,6 +1175,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       if (sIdx == null || eIdx == null) return;
       if (!posMap[sIdx] || !posMap[eIdx - 1]) return;
 
+      anns.forEach((a) => locatableIds.add(a.id));
+
       const range = document.createRange();
       range.setStart(posMap[sIdx].node, posMap[sIdx].offset);
       range.setEnd(posMap[eIdx - 1].node, posMap[eIdx - 1].offset + 1);
@@ -1130,10 +1233,13 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
   }
 
   function renderAnnotations(filterPid = null) {
+    const visibleAnnotations = allAnnotations.filter((a) =>
+      locatableIds.has(a.id),
+    );
     const shown = filterPid
-      ? allAnnotations.filter((a) => a.paragraph_id === filterPid)
-      : allAnnotations;
-    panelBadgeCount.textContent = '(' + allAnnotations.length + ')';
+      ? visibleAnnotations.filter((a) => a.paragraph_id === filterPid)
+      : visibleAnnotations;
+    panelBadgeCount.textContent = '(' + visibleAnnotations.length + ')';
 
     const signinPromptHtml = !hasPaidAccess()
       ? '<div class="ns-signin-prompt">' +
@@ -1188,9 +1294,19 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
                 escapeHtml(aid) +
                 '">' +
                 a.replies
-                  .map(
-                    (r) =>
-                      '<div class="ns-reply">' +
+                  .map((r) => {
+                    const rIsOwner = mid && r.member_id && r.member_id === mid;
+                    return (
+                      '<div class="ns-reply" data-reply-id="' +
+                      escapeHtml(String(r.id)) +
+                      '">' +
+                      (rIsOwner
+                        ? '<button class="ns-reply-delete-btn" data-reply-delete-btn="' +
+                          escapeHtml(String(r.id)) +
+                          '" aria-label="Delete reply">' +
+                          REPLY_DELETE_ICON_HTML +
+                          '</button>'
+                        : '') +
                       '<div class="ns-reply-author">' +
                       escapeHtml(r.author_name) +
                       '<span class="ns-reply-date">· ' +
@@ -1200,8 +1316,9 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
                       '<div class="ns-reply-text">' +
                       escapeHtml(r.reply_text) +
                       '</div>' +
-                      '</div>',
-                  )
+                      '</div>'
+                    );
+                  })
                   .join('') +
                 '</div>'
               : '';
@@ -1303,6 +1420,12 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
         deleteAnnotation(btn.dataset.deleteBtn, btn);
       });
     });
+    panelList.querySelectorAll('[data-reply-delete-btn]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteReply(btn.dataset.replyDeleteBtn, btn);
+      });
+    });
     panelList.querySelectorAll('[data-replies-toggle]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1338,13 +1461,13 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
         'GET',
         'annotations?newsletter_slug=eq.' +
           encodeURIComponent(slug) +
-          '&order=created_at.asc',
+          '&order=created_at.desc',
       );
       if (!Array.isArray(annotations) || !annotations.length) {
         allAnnotations = [];
         tagAllBlocks();
-        renderAnnotations();
         applyHighlights();
+        renderAnnotations();
         updateToggleBadge();
         return;
       }
@@ -1381,8 +1504,8 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
       }));
 
       tagAllBlocks();
-      renderAnnotations();
       applyHighlights();
+      renderAnnotations();
       updateToggleBadge();
     } catch (err) {
       console.error('[NS] Load failed:', err);
@@ -1390,6 +1513,121 @@ const NS_PAID_GATE = 'ns-members'; // matches data-ms-content value
     }
   }
 
+  // ─── Realtime ──────────────────────────────────────
+  function setupRealtime() {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      console.warn(
+        '[NS] Supabase JS SDK not found on window — realtime disabled.',
+      );
+      return;
+    }
+    let client;
+    try {
+      client = window.supabase.createClient(NS_SUPABASE_URL, NS_SUPABASE_KEY);
+    } catch (e) {
+      console.warn('[NS] Failed to create Supabase client:', e);
+      return;
+    }
+
+    function handleAnnotationInsert(ann) {
+      if (!ann || !ann.id) return;
+      if (allAnnotations.some((a) => a.id === ann.id)) return;
+      allAnnotations.unshift({ ...ann, likes: ann.likes || 0, replies: [] });
+      applyHighlights();
+      renderAnnotations();
+      updateToggleBadge();
+    }
+
+    function handleAnnotationUpdate(ann) {
+      if (!ann || !ann.id) return;
+      const idx = allAnnotations.findIndex((a) => a.id === ann.id);
+      if (idx === -1) return;
+      const existing = allAnnotations[idx];
+      allAnnotations[idx] = {
+        ...existing,
+        ...ann,
+        replies: existing.replies || [],
+      };
+      renderAnnotations();
+    }
+
+    function handleAnnotationDelete(ann) {
+      if (!ann || !ann.id) return;
+      if (!allAnnotations.some((a) => a.id === ann.id)) return;
+      allAnnotations = allAnnotations.filter((a) => a.id !== ann.id);
+      likedAnnotations.delete(ann.id);
+      applyHighlights();
+      renderAnnotations();
+      updateToggleBadge();
+    }
+
+    function handleReplyInsert(reply) {
+      if (!reply || !reply.id || !reply.annotation_id) return;
+      const ann = allAnnotations.find((a) => a.id === reply.annotation_id);
+      if (!ann) return;
+      ann.replies = ann.replies || [];
+      if (ann.replies.some((r) => r.id === reply.id)) return;
+      ann.replies.push(reply);
+      renderAnnotations();
+    }
+
+    function handleReplyUpdate(reply) {
+      if (!reply || !reply.id || !reply.annotation_id) return;
+      const ann = allAnnotations.find((a) => a.id === reply.annotation_id);
+      if (!ann || !ann.replies) return;
+      const idx = ann.replies.findIndex((r) => r.id === reply.id);
+      if (idx === -1) return;
+      ann.replies[idx] = reply;
+      renderAnnotations();
+    }
+
+    function handleReplyDelete(reply) {
+      if (!reply || !reply.id) return;
+      let changed = false;
+      for (const ann of allAnnotations) {
+        if (!ann.replies) continue;
+        const before = ann.replies.length;
+        ann.replies = ann.replies.filter((r) => r.id !== reply.id);
+        if (ann.replies.length !== before) changed = true;
+      }
+      if (changed) renderAnnotations();
+    }
+
+    const annotationsChannel = client
+      .channel('newsletter:' + slug + ':annotations')
+      .on('broadcast', { event: 'annotation_insert' }, (msg) =>
+        handleAnnotationInsert(msg.payload && msg.payload.annotation),
+      )
+      .on('broadcast', { event: 'annotation_update' }, (msg) =>
+        handleAnnotationUpdate(msg.payload && msg.payload.annotation),
+      )
+      .on('broadcast', { event: 'annotation_delete' }, (msg) =>
+        handleAnnotationDelete(msg.payload && msg.payload.annotation),
+      )
+      .subscribe();
+
+    const repliesChannel = client
+      .channel('newsletter:' + slug + ':comments')
+      .on('broadcast', { event: 'annotation_reply_insert' }, (msg) =>
+        handleReplyInsert(msg.payload && msg.payload.reply),
+      )
+      .on('broadcast', { event: 'annotation_reply_update' }, (msg) =>
+        handleReplyUpdate(msg.payload && msg.payload.reply),
+      )
+      .on('broadcast', { event: 'annotation_reply_delete' }, (msg) =>
+        handleReplyDelete(msg.payload && msg.payload.reply),
+      )
+      .subscribe();
+
+    window.addEventListener('beforeunload', () => {
+      try {
+        client.removeChannel(annotationsChannel);
+        client.removeChannel(repliesChannel);
+      } catch (e) {}
+    });
+  }
+
   loadAnnotations();
+  setupRealtime();
   console.log('[NS Annotations] Initialized for slug:', slug);
 })();
