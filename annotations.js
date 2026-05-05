@@ -800,10 +800,13 @@ const NS_JOIN_URL = '/become-a-member';
         likes: 0,
       });
       if (Array.isArray(rows) && rows[0]) {
-        allAnnotations.unshift({ ...rows[0], replies: [] });
-        applyHighlights();
-        renderAnnotations();
-        updateToggleBadge();
+        const newAnn = rows[0];
+        if (!allAnnotations.some((a) => a.id === newAnn.id)) {
+          allAnnotations.unshift({ ...newAnn, replies: [] });
+          applyHighlights();
+          renderAnnotations();
+          updateToggleBadge();
+        }
       }
     } catch (err) {
       console.error('[NS] Save failed:', err);
@@ -1086,7 +1089,10 @@ const NS_JOIN_URL = '/become-a-member';
       sBtn.textContent = 'Reply →';
       return;
     }
-    ann.replies.push(reply);
+    ann.replies = ann.replies || [];
+    if (!ann.replies.some((r) => r.id === reply.id)) {
+      ann.replies.push(reply);
+    }
     sBtn.disabled = false;
     sBtn.textContent = 'Reply →';
 
