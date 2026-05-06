@@ -92,6 +92,14 @@ const NS_JOIN_URL = '/become-a-member';
     if (before !== after) renderAnnotations();
   }
 
+  let lastRefetchAt = 0;
+  async function refreshOnReturn() {
+    if (Date.now() - lastRefetchAt < 2000) return;
+    lastRefetchAt = Date.now();
+    await refreshAuthAndUI();
+    if (typeof loadAnnotations === 'function') await loadAnnotations();
+  }
+
   function watchForLogin(durationMs = 60000, intervalMs = 1000) {
     const start = Date.now();
     const tick = async () => {
@@ -131,9 +139,9 @@ const NS_JOIN_URL = '/become-a-member';
     } catch (e) {}
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshAuthAndUI();
+    if (document.visibilityState === 'visible') refreshOnReturn();
   });
-  window.addEventListener('focus', () => refreshAuthAndUI());
+  window.addEventListener('focus', () => refreshOnReturn());
 
   // ─── Supabase helper with proper error handling ────
   async function supa(method, path, body) {
