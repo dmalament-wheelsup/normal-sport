@@ -6,17 +6,6 @@ const NS_JOIN_URL = '/become-a-member';
 // ──────────────────────────────────────────────────────
 
 (async function NormalSportAnnotations() {
-  // ─── Feature flag ──────────────────────────────────
-  // Annotations are only enabled when the URL has an "annotated" query param
-  // (e.g. ?annotated). Bail early otherwise so no UI is injected and no
-  // Supabase calls are made.
-  try {
-    const params = new URLSearchParams(window.location.search);
-    if (!params.has('annotated')) return;
-  } catch (e) {
-    return;
-  }
-
   // ─── Browser ID for like tracking ──────────────────
   function getBrowserId() {
     let id = null;
@@ -103,6 +92,14 @@ const NS_JOIN_URL = '/become-a-member';
     if (before !== after) renderAnnotations();
   }
 
+  let lastRefetchAt = 0;
+  async function refreshOnReturn() {
+    if (Date.now() - lastRefetchAt < 2000) return;
+    lastRefetchAt = Date.now();
+    await refreshAuthAndUI();
+    if (typeof loadAnnotations === 'function') await loadAnnotations();
+  }
+
   function watchForLogin(durationMs = 60000, intervalMs = 1000) {
     const start = Date.now();
     const tick = async () => {
@@ -142,9 +139,9 @@ const NS_JOIN_URL = '/become-a-member';
     } catch (e) {}
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshAuthAndUI();
+    if (document.visibilityState === 'visible') refreshOnReturn();
   });
-  window.addEventListener('focus', () => refreshAuthAndUI());
+  window.addEventListener('focus', () => refreshOnReturn());
 
   // ─── Supabase helper with proper error handling ────
   async function supa(method, path, body) {
@@ -340,6 +337,14 @@ const NS_JOIN_URL = '/become-a-member';
     .ns-highlight-toggle input:focus-visible + .ns-toggle-slider { outline: 2px solid #9ed5fe; outline-offset: 2px; }
     .ns-toggle-label { font-size: 13px; color: #484037; font-weight: 500; }
 
+    .ns-controls-row { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #48403726; }
+    .ns-control-group { display: flex; flex-direction: column; gap: 6px; }
+    .ns-control-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; color: #675b4e; }
+    .ns-control-buttons { display: flex; gap: 4px; }
+    .ns-control-btn { background: transparent; border: 1px solid #484037; color: #484037; font-family: inherit; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 12px; cursor: pointer; line-height: 100%; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .ns-control-btn:hover { background: #48403714; }
+    .ns-control-btn.ns-active { background: #ff8690; color: #5f2126; border-color: #5f2126; }
+
     .ns-card { border: 1px solid #484037; background: #fffdfb; border-radius: 16px; margin-bottom: 12px; cursor: pointer; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; animation: ns-slidein 0.25s ease; }
     .ns-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px #48403726; }
     .ns-card.ns-focused { border-color: #5f2126; box-shadow: 0 0 0 3px #ff869040, 0 6px 16px #48403726; transform: translateY(-2px); }
@@ -508,6 +513,91 @@ const NS_JOIN_URL = '/become-a-member';
     } catch (e) {}
   });
 
+  // Sort + filter state
+  let sortOrder = 'newest';
+  let filterMine = false;
+  try {
+    const storedSort = localStorage.getItem('ns_sort_order');
+    if (storedSort === 'oldest' || storedSort === 'newest') sortOrder = storedSort;
+    filterMine = localStorage.getItem('ns_filter_mine') === 'true';
+  } catch (e) {}
+
+  function buildControlGroup(labelText, options, getValue, onSelect) {
+    const group = document.createElement('div');
+    group.className = 'ns-control-group';
+    const label = document.createElement('div');
+    label.className = 'ns-control-label';
+    label.textContent = labelText;
+    group.appendChild(label);
+    const buttonsWrap = document.createElement('div');
+    buttonsWrap.className = 'ns-control-buttons';
+    const buttons = options.map((opt) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ns-control-btn';
+      btn.textContent = opt.label;
+      btn.dataset.value = opt.value;
+      btn.addEventListener('click', () => {
+        onSelect(opt.value);
+        syncActive();
+      });
+      buttonsWrap.appendChild(btn);
+      return btn;
+    });
+    group.appendChild(buttonsWrap);
+    function syncActive() {
+      const current = getValue();
+      buttons.forEach((b) => {
+        b.classList.toggle('ns-active', b.dataset.value === current);
+      });
+    }
+    syncActive();
+    return { group, syncActive };
+  }
+
+  const controlsRow = document.createElement('div');
+  controlsRow.className = 'ns-controls-row';
+
+  const sortSection = buildControlGroup(
+    'Sort',
+    [
+      { label: 'Newest', value: 'newest' },
+      { label: 'Oldest', value: 'oldest' },
+    ],
+    () => sortOrder,
+    (v) => {
+      sortOrder = v;
+      try {
+        localStorage.setItem('ns_sort_order', v);
+      } catch (e) {}
+      renderAnnotations();
+    },
+  );
+  controlsRow.appendChild(sortSection.group);
+
+  const filterSection = buildControlGroup(
+    'Filter',
+    [
+      { label: 'All', value: 'all' },
+      { label: 'Mine', value: 'mine' },
+    ],
+    () => (filterMine ? 'mine' : 'all'),
+    (v) => {
+      filterMine = v === 'mine';
+      try {
+        localStorage.setItem('ns_filter_mine', filterMine ? 'true' : 'false');
+      } catch (e) {}
+      renderAnnotations();
+    },
+  );
+  controlsRow.appendChild(filterSection.group);
+  panel.appendChild(controlsRow);
+
+  function updateFilterSectionVisibility() {
+    filterSection.group.style.display = isLoggedIn() ? '' : 'none';
+  }
+  updateFilterSectionVisibility();
+
   const panelList = document.createElement('div');
   panel.appendChild(panelList);
   document.body.appendChild(panel);
@@ -666,6 +756,14 @@ const NS_JOIN_URL = '/become-a-member';
         : '✎ Log in to post';
     annotateBtn.textContent = label;
     fab.textContent = label;
+    if (!isLoggedIn() && filterMine) {
+      filterMine = false;
+      try {
+        localStorage.setItem('ns_filter_mine', 'false');
+      } catch (e) {}
+      filterSection.syncActive();
+    }
+    updateFilterSectionVisibility();
   }
   applyAuthState();
 
@@ -710,10 +808,13 @@ const NS_JOIN_URL = '/become-a-member';
         likes: 0,
       });
       if (Array.isArray(rows) && rows[0]) {
-        allAnnotations.unshift({ ...rows[0], replies: [] });
-        applyHighlights();
-        renderAnnotations();
-        updateToggleBadge();
+        const newAnn = rows[0];
+        if (!allAnnotations.some((a) => a.id === newAnn.id)) {
+          allAnnotations.unshift({ ...newAnn, replies: [] });
+          applyHighlights();
+          renderAnnotations();
+          updateToggleBadge();
+        }
       }
     } catch (err) {
       console.error('[NS] Save failed:', err);
@@ -996,7 +1097,10 @@ const NS_JOIN_URL = '/become-a-member';
       sBtn.textContent = 'Reply →';
       return;
     }
-    ann.replies.push(reply);
+    ann.replies = ann.replies || [];
+    if (!ann.replies.some((r) => r.id === reply.id)) {
+      ann.replies.push(reply);
+    }
     sBtn.disabled = false;
     sBtn.textContent = 'Reply →';
 
@@ -1201,6 +1305,7 @@ const NS_JOIN_URL = '/become-a-member';
 
       [mark, badge].forEach((el) => {
         el.addEventListener('click', (e) => {
+          if (e.target.closest('a')) return;
           e.stopPropagation();
           openPanel();
           focusAnnotationsForParagraph(pid);
@@ -1236,10 +1341,20 @@ const NS_JOIN_URL = '/become-a-member';
     const visibleAnnotations = allAnnotations.filter((a) =>
       locatableIds.has(a.id),
     );
-    const shown = filterPid
+    let shown = filterPid
       ? visibleAnnotations.filter((a) => a.paragraph_id === filterPid)
       : visibleAnnotations;
     panelBadgeCount.textContent = '(' + visibleAnnotations.length + ')';
+
+    const currentMid = memberId();
+    if (filterMine && currentMid) {
+      shown = shown.filter((a) => a.member_id === currentMid);
+    }
+    shown = shown.slice().sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sortOrder === 'oldest' ? ta - tb : tb - ta;
+    });
 
     const signinPromptHtml = !hasPaidAccess()
       ? '<div class="ns-signin-prompt">' +
@@ -1257,9 +1372,11 @@ const NS_JOIN_URL = '/become-a-member';
         '<p style="color:#675b4e;font-size:14px;text-align:center;padding:2rem 0">' +
         (filterPid
           ? 'No annotations on this paragraph yet.'
-          : hasPaidAccess()
-            ? 'No annotations yet. Highlight text to start.'
-            : 'No annotations yet.') +
+          : filterMine && currentMid
+            ? "You haven't posted any annotations yet."
+            : hasPaidAccess()
+              ? 'No annotations yet. Highlight text to start.'
+              : 'No annotations yet.') +
         '</p>';
       panelList.querySelectorAll('[data-ns-signin]').forEach((b) => {
         b.addEventListener('click', (e) => {
