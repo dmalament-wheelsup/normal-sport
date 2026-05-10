@@ -1305,6 +1305,7 @@ const NS_JOIN_URL = '/become-a-member';
 
       [mark, badge].forEach((el) => {
         el.addEventListener('click', (e) => {
+          if (e.target.closest('a')) return;
           e.stopPropagation();
           openPanel();
           focusAnnotationsForParagraph(pid);
